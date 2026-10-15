@@ -456,7 +456,7 @@ function createCard(item, type, index) {
                     alt="${title}"
                     loading="lazy"
                     decoding="async"
-                    onerror="this.onerror=null;this.src='${getPlaceholder()}'"
+                    onerror="this.onerror=null;this.src='${getPlaceholder()}'
                 >
 
                 <span class="poster-badge">
@@ -612,42 +612,29 @@ function searchAll(value) {
 
 
 /* =========================================
-   DETAILS MODAL
+   DETAILS PAGE
 ========================================= */
 
 function openDetails(item, type) {
 
-    if (!item) {
+    if (!item || !item.title) {
         return;
     }
 
-    elements.modalTitle.textContent = item.title;
+    const params = new URLSearchParams({
+        type: type,
+        title: item.title
+    });
 
-    elements.modalCategory.textContent =
-        type === "series"
-            ? "مسلسل"
-            : item.category;
-
-    elements.modalPoster.src =
-        getPoster(item) || getPlaceholder();
-
-    elements.modalPoster.alt = item.title;
-
-    elements.modalDescription.textContent =
-        item.description ||
-        (
-            type === "series"
-                ? "عدد الحلقات: " + item.episodeCount
-                : "اكتشف تفاصيل هذا الفيلم."
-        );
-
-    elements.modal.classList.add("show");
-
-    document.body.style.overflow = "hidden";
+    window.location.href = "details.html?" + params.toString();
 }
 
 
 function closeDetails() {
+
+    if (!elements.modal) {
+        return;
+    }
 
     elements.modal.classList.remove("show");
 
@@ -772,9 +759,13 @@ function setupEvents() {
     elements.seriesGrid.addEventListener("keydown", handleKeyboard);
 
 
-    elements.modalClose.addEventListener("click", closeDetails);
+    if (elements.modalClose) {
+        elements.modalClose.addEventListener("click", closeDetails);
+    }
 
-    elements.modalBackdrop.addEventListener("click", closeDetails);
+    if (elements.modalBackdrop) {
+        elements.modalBackdrop.addEventListener("click", closeDetails);
+    }
 
 
     document.addEventListener("keydown", function (event) {
