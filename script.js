@@ -29,7 +29,8 @@ const CONFIG = {
     itemsPerPage: 18,
     cacheMaxAge: 7 * 24 * 60 * 60 * 1000,
     heroInterval: 6000,
-    maxHeroItems: 6
+    maxHeroItems: 6,
+    maxSearchResults: 12
 };
 
 
@@ -48,6 +49,7 @@ const state = {
     seriesCategory: "الكل",
 
     searchQuery: "",
+    searchResults: [],
 
     moviePage: 1,
     seriesPage: 1,
@@ -83,6 +85,7 @@ const elements = {
     searchToggle: document.getElementById("searchToggle"),
     searchContainer: document.getElementById("searchContainer"),
     searchInput: document.getElementById("searchInput"),
+    searchResults: null,
 
     hero: document.querySelector(".hero"),
     heroArt: document.getElementById("heroArt"),
@@ -115,13 +118,18 @@ function normalizeText(value) {
         .trim()
         .toLowerCase()
         .replace(/[ـًٌٍَُِّْ]/g, "")
+        .replace(/[أإآٱ]/g, "ا")
+        .replace(/ى/g, "ي")
+        .replace(/ؤ/g, "و")
+        .replace(/ئ/g, "ي")
+        .replace(/ة/g, "ه")
         .replace(/\s+/g, " ");
 }
 
 
 function normalizeSeriesTitle(value) {
     return normalizeText(value)
-        .replace(/^مسلسل\s*/i, "")
+        .replace(/^(مسلسل|فيلم)\s*/i, "")
         .trim();
 }
 
@@ -510,8 +518,8 @@ function createCard(item, type, index) {
                     alt="${title}"
                     loading="lazy"
                     decoding="async"
-                    onerror="this.onerror=null;this.src='${getPlaceholder()}'"
-                >
+                    onerror="this.onerror=null;this.src='${getPlaceholder()}'
+                ">
 
                 <span class="poster-badge">
                     ${type === "series" ? "مسلسل" : category}
@@ -679,6 +687,374 @@ function searchAll(value) {
 
 
 /* =========================================
+   LIVE SEARCH RESULTS
+========================================= */
+
+function ensureSearchResults() {
+    if (!elements.searchContainer) {
+        return null;
+    }
+
+    if (!elements.searchResults) {
+        elements.searchResults = document.createElement("div");
+        elements.searchResults.id = "searchResults";
+        elements.searchResults.className = "search-results";
+        elements.searchResults.setAttribute("aria-live", "polite");
+
+        elements.searchContainer.appendChild(elements.searchResults);
+    }
+
+    return elements.searchResults;
+}
+
+
+function getSearchScore(item, query) {
+    const title = normalizeText(item.title);
+    const cleanTitle = normalizeSeriesTitle(item.title);
+
+    if (title === query || cleanTitle === query) {
+        return 100;
+    }
+
+    if (title.startsWith(query) || cleanTitle.startsWith(query)) {
+        return 80;
+    }
+
+    if (title.includes(query) || cleanTitle.includes(query)) {
+        return 60;
+    }
+
+    const words = query.split(" ").filter(Boolean);
+
+    const matched = words.filter(word =>
+        title.includes(word) || cleanTitle.includes(word)
+    ).length;
+
+    return words.length
+        ? Math.round((matched / words.length) * 40)
+        : 0;
+}
+
+
+function buildSearchResults(query) {
+    if (!query) {
+        return [];
+    }
+
+    const allItems = [
+        ...state.movies.map(item => ({
+            ...item,
+            type: "movie"
+        })),
+
+        ...state.series.map(item => ({
+            ...item,
+            type: "series"
+        }))
+    ];
+
+    return allItems
+        .map(item => ({
+            ...item,
+            score: getSearchScore(item, query)
+        }))
+        .filter(item => item.score > 0)
+        .sort((a, b) =>
+            b.score - a.score ||
+            a.title.localeCompare(b.title, "ar")
+        )
+        .slice(0, CONFIG.maxSearchResults);
+}
+
+
+function renderSearchResults(value) {
+    const panel = ensureSearchResults();
+
+    if (!panel) {
+        return;
+    }
+
+    const query = normalizeSeriesTitle(value);
+
+    if (!query) {
+        state.searchResults = [];
+
+        panel.innerHTML =
+            '<div class="search-hint">اكتب اسم فيلم أو مسلسل للبحث في المكتبة</div>';
+
+        return;
+    }
+
+    state.searchResults = buildSearchResults(query);
+
+    if (state.searchResults.length === 0) {
+        panel.innerHTML = `
+            <div class="search-empty">
+                <strong>ما لقينا نتائج مطابقة</strong>
+                <span>جرّب كتابة الاسم بشكل مختلف</span>
+            </div>
+        `;
+
+        return;
+    }
+
+    const countText = state.searchResults.length === CONFIG.maxSearchResults
+        ? "أبرز النتائج"
+        : state.searchResults.length + " نتيجة";
+
+    panel.innerHTML = `
+        <div class="search-results-heading">
+            <strong>نتائج البحث</strong>
+            <span>${countText}</span>
+        </div>
+
+        <div class="search-results-grid">
+
+            ${state.searchResults.map((item, index) => {
+                const poster = getPoster(item) || getPlaceholder();
+
+                const typeLabel =
+                    item.type === "series" ? "مسلسل" : "فيلم";
+
+                return `
+                    <button
+                        class="search-result-card"
+                        type="button"
+                        data-search-index="${index}"
+                        aria-label="فتح ${escapeHTML(item.title)}"
+                    >
+
+                        <span class="search-result-poster">
+
+                            <img
+                                src="${escapeHTML(poster)}"
+                                alt="${escapeHTML(item.title)}"
+                                loading="lazy"
+                                decoding="async"
+                                onerror="this.onerror=null;this.src='${getPlaceholder()}'"
+                            >
+
+                            <span>${typeLabel}</span>
+
+                        </span>
+
+                        <span class="search-result-title">
+                            ${escapeHTML(item.title)}
+                        </span>
+
+                        <span class="search-result-category">
+                            ${escapeHTML(item.category)}
+                        </span>
+
+                    </button>
+                `;
+            }).join("")}
+
+        </div>
+    `;
+}
+
+
+function openSearchResult(index) {
+    const item = state.searchResults[index];
+
+    if (!item) {
+        return;
+    }
+
+    openDetails(item, item.type);
+}
+
+
+/* =========================================
+   SEARCH DESIGN
+========================================= */
+
+function injectSearchStyles() {
+    if (document.getElementById("dramatv-search-styles")) {
+        return;
+    }
+
+    const style = document.createElement("style");
+
+    style.id = "dramatv-search-styles";
+
+    style.textContent = `
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-results {
+            display: none;
+            margin-top: 12px;
+            padding: 15px;
+
+            background: #111;
+            border: 1px solid rgba(255,255,255,.09);
+            border-radius: 15px;
+
+            box-shadow: 0 18px 45px rgba(0,0,0,.45);
+
+            max-height: min(65vh, 620px);
+            overflow-y: auto;
+        }
+
+        .search-container.show .search-results {
+            display: block;
+        }
+
+        .search-results-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+
+            margin-bottom: 13px;
+
+            color: #fff;
+            font-size: 13px;
+        }
+
+        .search-results-heading span {
+            color: #999;
+            font-size: 11px;
+        }
+
+        .search-results-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 14px 11px;
+        }
+
+        .search-result-card {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+
+            padding: 0;
+
+            text-align: right;
+            color: #fff;
+            background: transparent;
+
+            cursor: pointer;
+        }
+
+        .search-result-poster {
+            position: relative;
+            display: block;
+
+            width: 100%;
+            aspect-ratio: 2 / 3;
+
+            overflow: hidden;
+
+            border-radius: 9px;
+            background: #202020;
+            border: 1px solid rgba(255,255,255,.08);
+        }
+
+        .search-result-poster img {
+            width: 100%;
+            height: 100%;
+
+            display: block;
+            object-fit: cover;
+
+            transition: transform .25s ease;
+        }
+
+        .search-result-card:hover .search-result-poster img {
+            transform: scale(1.06);
+        }
+
+        .search-result-poster > span {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+
+            padding: 3px 7px;
+
+            border-radius: 5px;
+            background: #e50914;
+
+            color: #fff;
+            font-size: 9px;
+            font-weight: 800;
+        }
+
+        .search-result-title {
+            margin-top: 7px;
+
+            overflow: hidden;
+
+            color: #eee;
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1.7;
+
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .search-result-category {
+            margin-top: 2px;
+            color: #888;
+            font-size: 9px;
+        }
+
+        .search-hint,
+        .search-empty {
+            padding: 22px 10px;
+
+            color: #999;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .search-empty {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .search-empty strong {
+            color: #eee;
+            font-size: 13px;
+        }
+
+        @media (max-width: 700px) {
+
+            .search-results {
+                padding: 11px;
+                max-height: 60vh;
+            }
+
+            .search-results-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 13px 9px;
+            }
+
+            .search-result-title {
+                font-size: 10px;
+            }
+        }
+
+        @media (min-width: 701px) and (max-width: 950px) {
+
+            .search-results-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+        }
+    `;
+
+    document.head.appendChild(style);
+}
+
+
+/* =========================================
    HERO SLIDER
 ========================================= */
 
@@ -716,13 +1092,6 @@ function getHeroItems() {
 
 
 function renderHero() {
-    if (
-        !elements.hero ||
-        !elements.heroItems
-    ) {
-        // لا يوجد اعتماد على عناصر إضافية
-    }
-
     if (
         !elements.heroTitle ||
         !elements.heroDescription ||
@@ -982,26 +1351,57 @@ function setupSeriesFilters() {
 ========================================= */
 
 function setupEvents() {
+
+    injectSearchStyles();
+    ensureSearchResults();
+
     if (
         elements.searchToggle &&
         elements.searchContainer &&
         elements.searchInput
     ) {
         elements.searchToggle.addEventListener("click", function () {
+
             elements.searchContainer.classList.toggle("show");
 
             if (elements.searchContainer.classList.contains("show")) {
+
+                renderSearchResults(elements.searchInput.value);
                 elements.searchInput.focus();
+
             } else {
+
                 elements.searchInput.value = "";
+
                 searchAll("");
+                renderSearchResults("");
             }
         });
     }
 
     if (elements.searchInput) {
         elements.searchInput.addEventListener("input", function (event) {
+
             searchAll(event.target.value);
+
+            renderSearchResults(event.target.value);
+        });
+    }
+
+    if (elements.searchResults) {
+        elements.searchResults.addEventListener("click", function (event) {
+
+            const card = event.target.closest("[data-search-index]");
+
+            if (!card) {
+                return;
+            }
+
+            const index = Number(card.dataset.searchIndex);
+
+            if (Number.isInteger(index)) {
+                openSearchResult(index);
+            }
         });
     }
 
@@ -1048,8 +1448,24 @@ function setupEvents() {
     }
 
     document.addEventListener("keydown", function (event) {
+
         if (event.key === "Escape") {
+
             closeDetails();
+
+            if (
+                elements.searchContainer &&
+                elements.searchContainer.classList.contains("show")
+            ) {
+                elements.searchContainer.classList.remove("show");
+
+                if (elements.searchInput) {
+                    elements.searchInput.value = "";
+                }
+
+                searchAll("");
+                renderSearchResults("");
+            }
         }
     });
 
@@ -1078,6 +1494,7 @@ function closeDetails() {
 ========================================= */
 
 async function initializeDramaTV() {
+
     if (state.initialized) {
         return;
     }
@@ -1093,6 +1510,12 @@ async function initializeDramaTV() {
 
     getHeroItems();
     restartHeroTimer();
+
+    // إذا المستخدم كتب أثناء تحميل البيانات،
+    // نحدّث النتائج بعد اكتمال التحميل.
+    if (elements.searchInput && elements.searchInput.value.trim()) {
+        renderSearchResults(elements.searchInput.value);
+    }
 
     console.log("DramaTV initialized successfully");
 }
