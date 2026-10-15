@@ -170,6 +170,45 @@
             font-size: 13px;
         }
 
+        .movie-watch {
+            margin-top: 25px;
+        }
+
+        .watch-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 9px;
+            padding: 10px 19px;
+            background: #e50914;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 800;
+            border: 1px solid #ff303a;
+            text-decoration: none;
+            cursor: pointer;
+            transition: .2s;
+            font-family: inherit;
+        }
+
+        .watch-button:hover {
+            background: #b80710;
+            transform: translateY(-2px);
+        }
+
+        .watch-unavailable {
+            display: inline-block;
+            margin-top: 9px;
+            padding: 8px 14px;
+            background: #292929;
+            color: #888;
+            border-radius: 7px;
+            font-size: 11px;
+            border: 1px solid #393939;
+        }
+
         .episodes-header {
             display: flex;
             align-items: center;
@@ -255,37 +294,6 @@
         .episode-info p {
             color: #888;
             font-size: 11px;
-        }
-
-        .watch-button {
-            display: inline-block;
-            margin-top: 9px;
-            padding: 7px 14px;
-            background: #e50914;
-            color: #fff;
-            border-radius: 7px;
-            font-size: 11px;
-            font-weight: 800;
-            border: 1px solid #ff303a;
-            text-decoration: none;
-            cursor: pointer;
-            transition: .2s;
-        }
-
-        .watch-button:hover {
-            background: #b80710;
-            transform: translateY(-1px);
-        }
-
-        .watch-unavailable {
-            display: inline-block;
-            margin-top: 9px;
-            padding: 7px 14px;
-            background: #292929;
-            color: #888;
-            border-radius: 7px;
-            font-size: 11px;
-            border: 1px solid #393939;
         }
 
         .loading {
@@ -514,7 +522,6 @@ function getSeason(episode) {
     }
 
     const direct = String(episode.direct_video || "");
-
     const directMatch = direct.match(/S(\d{1,2})E\d+/i);
 
     if (directMatch) {
@@ -571,6 +578,8 @@ function renderDetails(item, category) {
         ? item.episodes
         : [];
 
+    const movieUrl = safeImage(item.direct_video);
+
     currentEpisodes = episodes.map(function(episode, index) {
         return {
             ...episode,
@@ -583,6 +592,8 @@ function renderDetails(item, category) {
     currentEpisodes.sort(function(a, b) {
         return a.season - b.season || a.number - b.number;
     });
+
+    currentSeason = "all";
 
     page.innerHTML = `
         <section class="hero">
@@ -606,6 +617,22 @@ function renderDetails(item, category) {
                             : `<span>فيلم</span>`}
                         <span>DramaTV</span>
                     </div>
+
+                    ${type === "movie" ? `
+                        <div class="movie-watch">
+                            ${movieUrl
+                                ? `<a class="watch-button"
+                                       href="${escapeHTML(movieUrl)}"
+                                       target="_blank"
+                                       rel="noopener noreferrer">
+                                       ▶ مشاهدة الفيلم
+                                   </a>`
+                                : `<span class="watch-unavailable">
+                                       رابط مشاهدة الفيلم غير متوفر
+                                   </span>`
+                            }
+                        </div>
+                    ` : ""}
                 </div>
 
             </div>
@@ -672,6 +699,7 @@ function renderSeasons() {
                 data-season="all">
             كل الحلقات
         </button>
+
         ${seasons.map(season => `
             <button class="season-tab ${String(currentSeason) === String(season) ? "active" : ""}"
                     data-season="${season}">
