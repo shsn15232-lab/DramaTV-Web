@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -261,13 +260,32 @@
         .watch-button {
             display: inline-block;
             margin-top: 9px;
-            padding: 6px 12px;
-            background: #292929;
-            color: #aaa;
+            padding: 7px 14px;
+            background: #e50914;
+            color: #fff;
             border-radius: 7px;
-            font-size: 10px;
+            font-size: 11px;
+            font-weight: 800;
+            border: 1px solid #ff303a;
+            text-decoration: none;
+            cursor: pointer;
+            transition: .2s;
+        }
+
+        .watch-button:hover {
+            background: #b80710;
+            transform: translateY(-1px);
+        }
+
+        .watch-unavailable {
+            display: inline-block;
+            margin-top: 9px;
+            padding: 7px 14px;
+            background: #292929;
+            color: #888;
+            border-radius: 7px;
+            font-size: 11px;
             border: 1px solid #393939;
-            cursor: not-allowed;
         }
 
         .loading {
@@ -680,6 +698,7 @@ function renderSeasons() {
 
     list.innerHTML = visible.map(function(episode) {
         const thumbnail = safeImage(episode.thumbnail) || placeholder();
+        const watchUrl = safeImage(episode.direct_video);
 
         return `
             <article class="episode-card">
@@ -695,9 +714,17 @@ function renderSeasons() {
 
                     <p>الموسم ${episode.season} · الحلقة ${episode.number}</p>
 
-                    <span class="watch-button">
-                        المشاهدة بعد الترخيص
-                    </span>
+                    ${watchUrl
+                        ? `<a class="watch-button"
+                               href="${escapeHTML(watchUrl)}"
+                               target="_blank"
+                               rel="noopener noreferrer">
+                               ▶ مشاهدة الحلقة
+                           </a>`
+                        : `<span class="watch-unavailable">
+                               رابط المشاهدة غير متوفر
+                           </span>`
+                    }
                 </div>
 
             </article>
