@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#080808">
     <title>تفاصيل العمل | DramaTV</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
@@ -36,6 +37,8 @@
             font-size: 25px;
             font-weight: 900;
             direction: ltr;
+            text-decoration: none;
+            color: white;
         }
 
         .logo span {
@@ -53,7 +56,7 @@
 
         .hero {
             position: relative;
-            min-height: 530px;
+            min-height: 500px;
             padding: 65px 7%;
             display: flex;
             align-items: center;
@@ -143,12 +146,12 @@
             padding: 45px 6%;
         }
 
-        .content h2 {
+        .section-title {
             font-size: 24px;
-            margin-bottom: 20px;
+            margin-bottom: 22px;
         }
 
-        .content h2::after {
+        .section-title::after {
             content: "";
             display: block;
             width: 45px;
@@ -159,13 +162,112 @@
         }
 
         .notice {
-            color: #999;
+            color: #aaa;
             background: #151515;
             border: 1px solid #292929;
             border-radius: 12px;
             padding: 18px;
             line-height: 2;
+            font-size: 13px;
+        }
+
+        .episodes-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .episodes-count {
+            color: #aaa;
             font-size: 12px;
+        }
+
+        .season-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 22px;
+        }
+
+        .season-tab {
+            border: 1px solid #333;
+            background: #181818;
+            color: #ccc;
+            border-radius: 9px;
+            padding: 9px 18px;
+            font-family: inherit;
+            font-size: 12px;
+            cursor: pointer;
+            transition: .2s;
+        }
+
+        .season-tab.active {
+            background: #e50914;
+            border-color: #e50914;
+            color: white;
+        }
+
+        .episode-list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 13px;
+        }
+
+        .episode-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+            padding: 12px;
+            background: #141414;
+            border: 1px solid #292929;
+            border-radius: 12px;
+            transition: .2s;
+        }
+
+        .episode-card:hover {
+            border-color: #e50914;
+            background: #1b1112;
+        }
+
+        .episode-thumb {
+            width: 115px;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            border-radius: 8px;
+            background: #222;
+            flex-shrink: 0;
+        }
+
+        .episode-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .episode-info h3 {
+            font-size: 13px;
+            font-weight: 800;
+            margin-bottom: 5px;
+            overflow-wrap: anywhere;
+        }
+
+        .episode-info p {
+            color: #888;
+            font-size: 11px;
+        }
+
+        .watch-button {
+            display: inline-block;
+            margin-top: 9px;
+            padding: 6px 12px;
+            background: #292929;
+            color: #aaa;
+            border-radius: 7px;
+            font-size: 10px;
+            border: 1px solid #393939;
+            cursor: not-allowed;
         }
 
         .loading {
@@ -178,12 +280,31 @@
             color: #ff5963;
         }
 
+        .empty {
+            padding: 35px 15px;
+            text-align: center;
+            color: #888;
+            background: #141414;
+            border: 1px solid #292929;
+            border-radius: 12px;
+        }
+
         footer {
             text-align: center;
             padding: 30px;
             color: #666;
             border-top: 1px solid #222;
             font-size: 12px;
+        }
+
+        @media(max-width: 750px) {
+            .episode-list {
+                grid-template-columns: 1fr;
+            }
+
+            .episode-thumb {
+                width: 105px;
+            }
         }
 
         @media(max-width: 650px) {
@@ -217,6 +338,24 @@
             .content {
                 padding: 35px 5%;
             }
+
+            .episodes-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .episode-card {
+                gap: 10px;
+                padding: 9px;
+            }
+
+            .episode-thumb {
+                width: 95px;
+            }
+
+            .episode-info h3 {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
@@ -224,7 +363,7 @@
 <body>
 
 <header>
-    <a href="index.html" class="logo" style="text-decoration:none;color:white">
+    <a href="index.html" class="logo">
         Drama<span>TV</span>
     </a>
     <a href="index.html" class="back">← رجوع</a>
@@ -244,20 +383,56 @@
 const BASE =
     "https://raw.githubusercontent.com/shsn15232-lab/DramaTV-Data/main/";
 
+const SERIES_FILES = [
+    { file: "section_arabic.json", category: "عربي" },
+    { file: "section_asian.json", category: "آسيوي" },
+    { file: "section_dubbed.json", category: "مدبلج" },
+    { file: "section_foreign.json", category: "أجنبي" },
+    { file: "section_ramadan_2026.json", category: "رمضان 2026" },
+    { file: "section_short.json", category: "قصير" },
+    { file: "section_turkish.json", category: "تركي" }
+];
+
+const MOVIE_FILES = [
+    { file: "movies_arabic.json", category: "عربي" },
+    { file: "movies_foreign.json", category: "أجنبي" },
+    { file: "movies_asian.json", category: "آسيوي" },
+    { file: "movies_indian.json", category: "هندي" },
+    { file: "movies_turkish.json", category: "تركي" },
+    { file: "movies_animation.json", category: "أنيميشن" }
+];
+
 const params = new URLSearchParams(location.search);
 const type = params.get("type");
 const title = params.get("title");
 
 const page = document.getElementById("page");
 
+let currentEpisodes = [];
+let currentSeason = "all";
+
 document.getElementById("year").textContent =
     new Date().getFullYear();
+
+
+function normalizeTitle(value) {
+    return String(value || "")
+        .toLowerCase()
+        .replace(/^مسلسل\s*/i, "")
+        .replace(/[ـًٌٍَُِّْ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
 
 function safeImage(url) {
     try {
         const parsed = new URL(url);
 
-        if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+        if (
+            parsed.protocol === "https:" ||
+            parsed.protocol === "http:"
+        ) {
             return parsed.href;
         }
     } catch {}
@@ -265,19 +440,108 @@ function safeImage(url) {
     return "";
 }
 
+
 function placeholder() {
     return "data:image/svg+xml;charset=UTF-8," +
         encodeURIComponent(
             '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450">' +
             '<rect width="100%" height="100%" fill="#181818"/>' +
-            '<text x="50%" y="50%" fill="#777" font-size="25" text-anchor="middle">DramaTV</text>' +
+            '<text x="50%" y="50%" fill="#777" font-size="25" text-anchor="middle" dominant-baseline="middle">DramaTV</text>' +
             '</svg>'
         );
 }
 
-function showDetails(item, category) {
+
+function escapeHTML(value) {
+    return String(value || "").replace(/[&<>"']/g, function(char) {
+        return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        }[char];
+    });
+}
+
+
+async function fetchJSON(file) {
+    const response = await fetch(
+        BASE + encodeURIComponent(file) + "?v=" + Date.now(),
+        { cache: "no-store" }
+    );
+
+    if (!response.ok) {
+        throw new Error("تعذر تحميل " + file);
+    }
+
+    return await response.json();
+}
+
+
+function getSeason(episode) {
+    const text = String(episode.title || "");
+
+    const patterns = [
+        /(?:الموسم|season|s)\s*[-:#]?\s*(\d+)/i,
+        /\bS(\d{1,2})E\d+/i
+    ];
+
+    for (const pattern of patterns) {
+        const match = text.match(pattern);
+
+        if (match) {
+            return Number(match[1]);
+        }
+    }
+
+    const direct = String(episode.direct_video || "");
+
+    const directMatch = direct.match(/S(\d{1,2})E\d+/i);
+
+    if (directMatch) {
+        return Number(directMatch[1]);
+    }
+
+    return 1;
+}
+
+
+function getEpisodeNumber(episode, index) {
+    const text = String(episode.title || "");
+    const direct = String(episode.direct_video || "");
+
+    const patterns = [
+        /(?:الحلقة|حلقة|episode|ep)\s*[-:#]?\s*(\d+)/i,
+        /\bS\d{1,2}E(\d{1,3})\b/i,
+        /\bE(\d{1,3})\b/i
+    ];
+
+    for (const pattern of patterns) {
+        const match = text.match(pattern) || direct.match(pattern);
+
+        if (match) {
+            return Number(match[1]);
+        }
+    }
+
+    return index + 1;
+}
+
+
+function cleanEpisodeTitle(episode, index) {
+    const raw = String(episode.title || "").replace(/\s+/g, " ").trim();
+
+    return raw || ("الحلقة " + (index + 1));
+}
+
+
+function renderDetails(item, category) {
     const poster = safeImage(
-        item.poster || item.posterUrl || item.thumbnail || item.image
+        item.poster ||
+        item.posterUrl ||
+        item.thumbnail ||
+        item.image
     ) || placeholder();
 
     const description =
@@ -286,8 +550,21 @@ function showDetails(item, category) {
         "لا تتوفر تفاصيل إضافية عن هذا العمل حالياً.";
 
     const episodes = Array.isArray(item.episodes)
-        ? item.episodes.length
-        : 0;
+        ? item.episodes
+        : [];
+
+    currentEpisodes = episodes.map(function(episode, index) {
+        return {
+            ...episode,
+            displayTitle: cleanEpisodeTitle(episode, index),
+            season: getSeason(episode),
+            number: getEpisodeNumber(episode, index)
+        };
+    });
+
+    currentEpisodes.sort(function(a, b) {
+        return a.season - b.season || a.number - b.number;
+    });
 
     page.innerHTML = `
         <section class="hero">
@@ -295,11 +572,11 @@ function showDetails(item, category) {
 
                 <img class="poster"
                      id="workPoster"
-                     src="${poster}"
+                     src="${escapeHTML(poster)}"
                      alt="بوستر العمل">
 
                 <div class="info">
-                    <span class="category">${category}</span>
+                    <span class="category">${escapeHTML(category)}</span>
 
                     <h1 id="workTitle"></h1>
 
@@ -307,7 +584,7 @@ function showDetails(item, category) {
 
                     <div class="meta">
                         ${type === "series"
-                            ? `<span>${episodes} حلقة</span>`
+                            ? `<span>${currentEpisodes.length} حلقة</span>`
                             : `<span>فيلم</span>`}
                         <span>DramaTV</span>
                     </div>
@@ -317,29 +594,185 @@ function showDetails(item, category) {
         </section>
 
         <section class="content">
-            <h2>عن العمل</h2>
-
-            <div class="notice">
-                ${escapeText(description)}
-            </div>
+            <h2 class="section-title">عن العمل</h2>
+            <div class="notice" id="workNotice"></div>
         </section>
+
+        ${type === "series" ? `
+        <section class="content" id="episodesSection">
+
+            <div class="episodes-header">
+                <h2 class="section-title">الحلقات والمواسم</h2>
+                <span class="episodes-count" id="episodesCount"></span>
+            </div>
+
+            <div class="season-tabs" id="seasonTabs"></div>
+
+            <div class="episode-list" id="episodeList"></div>
+
+        </section>
+        ` : ""}
     `;
 
     document.getElementById("workTitle").textContent = title;
     document.getElementById("workDescription").textContent = description;
+    document.getElementById("workNotice").textContent = description;
 
     document.getElementById("workPoster").onerror = function() {
         this.src = placeholder();
     };
 
     document.title = title + " | DramaTV";
+
+    if (type === "series") {
+        renderSeasons();
+    }
 }
 
-function escapeText(value) {
-    const div = document.createElement("div");
-    div.textContent = String(value || "");
-    return div.innerHTML;
+
+function renderSeasons() {
+    const tabs = document.getElementById("seasonTabs");
+    const list = document.getElementById("episodeList");
+    const count = document.getElementById("episodesCount");
+
+    if (!tabs || !list || !count) return;
+
+    if (currentEpisodes.length === 0) {
+        tabs.innerHTML = "";
+        list.innerHTML =
+            '<div class="empty">لا توجد حلقات مضافة لهذا المسلسل حالياً.</div>';
+        count.textContent = "0 حلقة";
+        return;
+    }
+
+    const seasons = [...new Set(
+        currentEpisodes.map(ep => ep.season)
+    )].sort((a, b) => a - b);
+
+    tabs.innerHTML = `
+        <button class="season-tab ${currentSeason === "all" ? "active" : ""}"
+                data-season="all">
+            كل الحلقات
+        </button>
+        ${seasons.map(season => `
+            <button class="season-tab ${String(currentSeason) === String(season) ? "active" : ""}"
+                    data-season="${season}">
+                الموسم ${season}
+            </button>
+        `).join("")}
+    `;
+
+    tabs.querySelectorAll(".season-tab").forEach(button => {
+        button.addEventListener("click", function() {
+            currentSeason = this.dataset.season === "all"
+                ? "all"
+                : Number(this.dataset.season);
+
+            renderSeasons();
+        });
+    });
+
+    const visible = currentSeason === "all"
+        ? currentEpisodes
+        : currentEpisodes.filter(ep => ep.season === currentSeason);
+
+    count.textContent = visible.length + " حلقة";
+
+    list.innerHTML = visible.map(function(episode) {
+        const thumbnail = safeImage(episode.thumbnail) || placeholder();
+
+        return `
+            <article class="episode-card">
+
+                <img class="episode-thumb"
+                     src="${escapeHTML(thumbnail)}"
+                     alt=""
+                     loading="lazy"
+                     onerror="this.onerror=null;this.src='${placeholder()}'">
+
+                <div class="episode-info">
+                    <h3>${escapeHTML(episode.displayTitle)}</h3>
+
+                    <p>الموسم ${episode.season} · الحلقة ${episode.number}</p>
+
+                    <span class="watch-button">
+                        المشاهدة بعد الترخيص
+                    </span>
+                </div>
+
+            </article>
+        `;
+    }).join("");
 }
+
+
+async function loadSeriesDetails() {
+    let found = null;
+    let foundCategory = "مسلسل";
+
+    const results = await Promise.allSettled(
+        SERIES_FILES.map(async function(entry) {
+            const data = await fetchJSON(entry.file);
+
+            return {
+                data: data,
+                category: entry.category
+            };
+        })
+    );
+
+    for (const result of results) {
+        if (result.status !== "fulfilled") continue;
+
+        const data = result.value.data;
+
+        const match = Object.entries(data || {}).find(function(entry) {
+            return normalizeTitle(entry[0]) === normalizeTitle(title);
+        });
+
+        if (match) {
+            const item = match[1];
+
+            if (
+                !found ||
+                (Array.isArray(item.episodes) ? item.episodes.length : 0) >
+                (Array.isArray(found.episodes) ? found.episodes.length : 0)
+            ) {
+                found = item;
+                foundCategory = result.value.category;
+            }
+        }
+    }
+
+    if (!found) {
+        throw new Error("لم يتم العثور على المسلسل ضمن ملفات الأقسام.");
+    }
+
+    renderDetails(found, foundCategory);
+}
+
+
+async function loadMovieDetails() {
+    for (const entry of MOVIE_FILES) {
+        try {
+            const data = await fetchJSON(entry.file);
+
+            const match = Object.entries(data || {}).find(function(item) {
+                return normalizeTitle(item[0]) === normalizeTitle(title);
+            });
+
+            if (match) {
+                renderDetails(match[1], entry.category);
+                return;
+            }
+        } catch (error) {
+            console.warn(error);
+        }
+    }
+
+    throw new Error("لم يتم العثور على الفيلم.");
+}
+
 
 async function loadDetails() {
     if (!title || !["movie", "series"].includes(type)) {
@@ -349,55 +782,20 @@ async function loadDetails() {
     }
 
     try {
-        let files = [];
-
         if (type === "series") {
-            files = ["series.json"];
+            await loadSeriesDetails();
         } else {
-            files = [
-                "movies_arabic.json",
-                "movies_foreign.json",
-                "movies_asian.json",
-                "movies_indian.json",
-                "movies_turkish.json",
-                "movies_animation.json"
-            ];
+            await loadMovieDetails();
         }
-
-        for (const file of files) {
-            const response = await fetch(BASE + file);
-
-            if (!response.ok) continue;
-
-            const data = await response.json();
-
-            if (data && data[title]) {
-                const categories = {
-                    movies_arabic: "عربي",
-                    movies_foreign: "أجنبي",
-                    movies_asian: "آسيوي",
-                    movies_indian: "هندي",
-                    movies_turkish: "تركي",
-                    movies_animation: "أنيميشن"
-                };
-
-                const category = type === "series"
-                    ? "مسلسل"
-                    : categories[file.replace(".json", "")] || "فيلم";
-
-                showDetails(data[title], category);
-                return;
-            }
-        }
-
-        page.innerHTML =
-            '<div class="loading error">لم يتم العثور على تفاصيل هذا العمل.</div>';
 
     } catch (error) {
         console.error(error);
 
         page.innerHTML =
-            '<div class="loading error">تعذر تحميل التفاصيل. تحقق من اتصال الإنترنت.</div>';
+            '<div class="loading error">' +
+            escapeHTML(error.message || "تعذر تحميل التفاصيل.") +
+            '<br>تأكد من اتصال الإنترنت وملفات البيانات.' +
+            '</div>';
     }
 }
 
