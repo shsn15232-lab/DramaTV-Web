@@ -1,0 +1,408 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#080808">
+    <title>تفاصيل العمل | DramaTV</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #080808;
+            color: white;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        header {
+            height: 75px;
+            padding: 0 6%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #101010;
+            border-bottom: 1px solid #252525;
+        }
+
+        .logo {
+            font-size: 25px;
+            font-weight: 900;
+            direction: ltr;
+        }
+
+        .logo span {
+            color: #e50914;
+        }
+
+        .back {
+            color: white;
+            text-decoration: none;
+            background: #222;
+            padding: 9px 18px;
+            border-radius: 25px;
+            font-size: 13px;
+        }
+
+        .hero {
+            position: relative;
+            min-height: 530px;
+            padding: 65px 7%;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 70% 40%, #45090d, transparent 55%),
+                #090909;
+        }
+
+        .hero::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, #080808 5%, transparent 100%);
+        }
+
+        .details {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 45px;
+            width: 100%;
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        .poster {
+            width: 270px;
+            aspect-ratio: 2 / 3;
+            object-fit: cover;
+            border-radius: 16px;
+            border: 1px solid #444;
+            box-shadow: 0 15px 50px #000;
+            background: #181818;
+        }
+
+        .info {
+            flex: 1;
+        }
+
+        .category {
+            display: inline-block;
+            color: #ff5963;
+            background: #e5091420;
+            border: 1px solid #e5091440;
+            padding: 7px 16px;
+            border-radius: 25px;
+            font-size: 12px;
+            font-weight: 800;
+            margin-bottom: 18px;
+        }
+
+        h1 {
+            font-size: clamp(28px, 5vw, 48px);
+            font-weight: 900;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .description {
+            color: #aaa;
+            line-height: 2.2;
+            font-size: 15px;
+            max-width: 600px;
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        .meta span {
+            background: #202020;
+            border: 1px solid #333;
+            padding: 9px 15px;
+            border-radius: 9px;
+            color: #ddd;
+            font-size: 12px;
+        }
+
+        .content {
+            max-width: 1100px;
+            margin: auto;
+            padding: 45px 6%;
+        }
+
+        .content h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .content h2::after {
+            content: "";
+            display: block;
+            width: 45px;
+            height: 3px;
+            background: #e50914;
+            margin-top: 9px;
+            border-radius: 5px;
+        }
+
+        .notice {
+            color: #999;
+            background: #151515;
+            border: 1px solid #292929;
+            border-radius: 12px;
+            padding: 18px;
+            line-height: 2;
+            font-size: 12px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 100px 15px;
+            color: #aaa;
+        }
+
+        .error {
+            color: #ff5963;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            border-top: 1px solid #222;
+            font-size: 12px;
+        }
+
+        @media(max-width: 650px) {
+            header {
+                height: 65px;
+            }
+
+            .hero {
+                padding: 35px 5%;
+                min-height: auto;
+            }
+
+            .details {
+                flex-direction: column;
+                text-align: center;
+                gap: 25px;
+            }
+
+            .poster {
+                width: 190px;
+            }
+
+            .description {
+                font-size: 13px;
+            }
+
+            .meta {
+                justify-content: center;
+            }
+
+            .content {
+                padding: 35px 5%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <a href="index.html" class="logo" style="text-decoration:none;color:white">
+        Drama<span>TV</span>
+    </a>
+    <a href="index.html" class="back">← رجوع</a>
+</header>
+
+<div id="page">
+    <div class="loading">جاري تحميل التفاصيل...</div>
+</div>
+
+<footer>
+    © <span id="year"></span> DramaTV
+</footer>
+
+<script>
+"use strict";
+
+const BASE =
+    "https://raw.githubusercontent.com/shsn15232-lab/DramaTV-Data/main/";
+
+const params = new URLSearchParams(location.search);
+const type = params.get("type");
+const title = params.get("title");
+
+const page = document.getElementById("page");
+
+document.getElementById("year").textContent =
+    new Date().getFullYear();
+
+function safeImage(url) {
+    try {
+        const parsed = new URL(url);
+
+        if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+            return parsed.href;
+        }
+    } catch {}
+
+    return "";
+}
+
+function placeholder() {
+    return "data:image/svg+xml;charset=UTF-8," +
+        encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450">' +
+            '<rect width="100%" height="100%" fill="#181818"/>' +
+            '<text x="50%" y="50%" fill="#777" font-size="25" text-anchor="middle">DramaTV</text>' +
+            '</svg>'
+        );
+}
+
+function showDetails(item, category) {
+    const poster = safeImage(
+        item.poster || item.posterUrl || item.thumbnail || item.image
+    ) || placeholder();
+
+    const description =
+        item.description ||
+        item.overview ||
+        "لا تتوفر تفاصيل إضافية عن هذا العمل حالياً.";
+
+    const episodes = Array.isArray(item.episodes)
+        ? item.episodes.length
+        : 0;
+
+    page.innerHTML = `
+        <section class="hero">
+            <div class="details">
+
+                <img class="poster"
+                     id="workPoster"
+                     src="${poster}"
+                     alt="بوستر العمل">
+
+                <div class="info">
+                    <span class="category">${category}</span>
+
+                    <h1 id="workTitle"></h1>
+
+                    <p class="description" id="workDescription"></p>
+
+                    <div class="meta">
+                        ${type === "series"
+                            ? `<span>${episodes} حلقة</span>`
+                            : `<span>فيلم</span>`}
+                        <span>DramaTV</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="content">
+            <h2>عن العمل</h2>
+
+            <div class="notice">
+                ${escapeText(description)}
+            </div>
+        </section>
+    `;
+
+    document.getElementById("workTitle").textContent = title;
+    document.getElementById("workDescription").textContent = description;
+
+    document.getElementById("workPoster").onerror = function() {
+        this.src = placeholder();
+    };
+
+    document.title = title + " | DramaTV";
+}
+
+function escapeText(value) {
+    const div = document.createElement("div");
+    div.textContent = String(value || "");
+    return div.innerHTML;
+}
+
+async function loadDetails() {
+    if (!title || !["movie", "series"].includes(type)) {
+        page.innerHTML =
+            '<div class="loading error">رابط العمل غير صحيح.</div>';
+        return;
+    }
+
+    try {
+        let files = [];
+
+        if (type === "series") {
+            files = ["series.json"];
+        } else {
+            files = [
+                "movies_arabic.json",
+                "movies_foreign.json",
+                "movies_asian.json",
+                "movies_indian.json",
+                "movies_turkish.json",
+                "movies_animation.json"
+            ];
+        }
+
+        for (const file of files) {
+            const response = await fetch(BASE + file);
+
+            if (!response.ok) continue;
+
+            const data = await response.json();
+
+            if (data && data[title]) {
+                const categories = {
+                    movies_arabic: "عربي",
+                    movies_foreign: "أجنبي",
+                    movies_asian: "آسيوي",
+                    movies_indian: "هندي",
+                    movies_turkish: "تركي",
+                    movies_animation: "أنيميشن"
+                };
+
+                const category = type === "series"
+                    ? "مسلسل"
+                    : categories[file.replace(".json", "")] || "فيلم";
+
+                showDetails(data[title], category);
+                return;
+            }
+        }
+
+        page.innerHTML =
+            '<div class="loading error">لم يتم العثور على تفاصيل هذا العمل.</div>';
+
+    } catch (error) {
+        console.error(error);
+
+        page.innerHTML =
+            '<div class="loading error">تعذر تحميل التفاصيل. تحقق من اتصال الإنترنت.</div>';
+    }
+}
+
+loadDetails();
+</script>
+
+</body>
+</html>
