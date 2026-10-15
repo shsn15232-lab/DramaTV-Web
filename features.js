@@ -2,7 +2,7 @@
 
 /* =========================================
    DRAMATV - EXTRA FEATURES
-   Favorites, History, Popular, Ratings
+   Favorites, Continue Browsing, Popular, Ratings
 ========================================= */
 
 (function () {
@@ -12,27 +12,6 @@
         popular: "dramatv_popular_v1",
         ratings: "dramatv_ratings_v1"
     };
-
-    const BASE = "https://raw.githubusercontent.com/shsn15232-lab/DramaTV-Data/main/";
-
-    const SERIES_FILES = [
-        "section_arabic.json",
-        "section_asian.json",
-        "section_dubbed.json",
-        "section_foreign.json",
-        "section_ramadan_2026.json",
-        "section_short.json",
-        "section_turkish.json"
-    ];
-
-    const MOVIE_FILES = [
-        "movies_arabic.json",
-        "movies_foreign.json",
-        "movies_asian.json",
-        "movies_indian.json",
-        "movies_turkish.json",
-        "movies_animation.json"
-    ];
 
     function read(key, fallback) {
         try {
@@ -108,6 +87,7 @@
 
         const style = document.createElement("style");
         style.id = "dramatv-extra-styles";
+
         style.textContent = `
             .dt-extra-section {
                 padding: 28px 6%;
@@ -147,6 +127,11 @@
                 text-decoration: none;
                 display: block;
                 position: relative;
+            }
+
+            .dt-extra-card a {
+                color: inherit;
+                text-decoration: none;
             }
 
             .dt-extra-card img {
@@ -298,6 +283,7 @@
         section = document.createElement("section");
         section.id = id;
         section.className = "dt-extra-section";
+
         section.innerHTML = `
             <div class="dt-extra-heading">
                 <h2>${title}</h2>
@@ -313,9 +299,11 @@
         const card = document.createElement("div");
         card.className = "dt-extra-card";
 
+        const image = item.image || "";
+
         card.innerHTML = `
             <a href="${escapeHTML(item.url)}">
-                <img src="${escapeHTML(item.image)}"
+                <img src="${escapeHTML(image)}"
                      alt="${escapeHTML(item.title)}"
                      loading="lazy"
                      decoding="async">
@@ -329,7 +317,9 @@
             ` : ""}
         `;
 
-        card.querySelector("img").addEventListener("error", function () {
+        const img = card.querySelector("img");
+
+        img.addEventListener("error", function () {
             this.style.visibility = "hidden";
         });
 
@@ -342,6 +332,10 @@
 
         return card;
     }
+
+    /* =========================================
+       FAVORITES
+    ========================================= */
 
     function getFavorites() {
         return read(KEYS.favorites, []);
@@ -376,8 +370,10 @@
     function updateFavoriteButtons() {
         document.querySelectorAll(".dt-favorite-button").forEach(button => {
             const active = isFavorite(button.dataset.key);
+
             button.classList.toggle("active", active);
             button.textContent = active ? "♥" : "♡";
+
             button.setAttribute(
                 "aria-label",
                 active ? "إزالة من قائمتي" : "إضافة إلى قائمتي"
@@ -386,24 +382,29 @@
     }
 
     function addFavoriteButtons() {
-        getCards().forEach(item => {
-            const card = Array.from(document.querySelectorAll(
-                "#moviesGrid .content-card, #seriesGrid .content-card"
-            )).find(element => {
-                const title = element.querySelector("h3")?.textContent?.trim();
-                return title === item.title &&
-                    element.dataset.type === item.type;
-            });
+        const cards = Array.from(document.querySelectorAll(
+            "#moviesGrid .content-card, #seriesGrid .content-card"
+        ));
 
-            const wrapper = card?.querySelector(".poster-wrapper");
-            if (!wrapper || wrapper.querySelector(".dt-favorite-button")) return;
+        cards.forEach(card => {
+            const type = card.dataset.type;
+            const title = card.querySelector("h3")?.textContent?.trim() || "";
+            const wrapper = card.querySelector(".poster-wrapper");
+
+            if (!type || !title || !wrapper) return;
+            if (wrapper.querySelector(".dt-favorite-button")) return;
+
+            const item = getCards().find(entry =>
+                entry.title === title && entry.type === type
+            );
+
+            if (!item) return;
 
             const button = document.createElement("button");
             button.type = "button";
             button.className = "dt-favorite-button";
             button.dataset.key = item.key;
             button.textContent = isFavorite(item.key) ? "♥" : "♡";
-            button.setAttribute("aria-label", "إضافة إلى قائمتي");
 
             button.addEventListener("click", event => {
                 event.preventDefault();
@@ -425,11 +426,46 @@
         grid.innerHTML = "";
 
         if (!favorites.length) {
-            grid.innerHTML = '<div class="dt-empty">قائمتك فارغة حالياً. أضف أعمالاً بالضغط على القلب.</div>';
+            grid.innerHTML = `
+                <div class="dt-empty">
+                    قائمتك فارغة حالياً. أضف أعمالاً بالضغط على القلب.
+                </div>
+            `;
             return;
         }
 
-        favorites.forEach(item => grid.appendChild(makeExtraCard(item, true)));
+        favorites.forEach(item => {
+            grid.appendChild(makeExtraCard(item, true));
+        });
+    }
+
+    /* =========================================
+       CONTINUE BROWSING - FIXED POSTERS
+    ========================================= */
+
+    function getHistory() {
+        return read(KEYS.history, []);
+    }
+
+    function saveHistoryItem(item) {
+        if (!item || !item.key) return;
+
+        const history = getHistory();
+        const oldItem = history.find(entry => entry.key === item.key);
+
+        const updated = {
+            ...(oldItem || {}),
+            ...item,
+            image: item.image || oldItem?.image || "",
+            subtitle: item.subtitle || oldItem?.subtitle || ""
+        };
+
+        const next = [
+            updated,
+            ...history.filter(entry => entry.key !== item.key)
+        ].slice(0, 30);
+
+        write(KEYS.history, next);
     }
 
     function renderHistory() {
@@ -437,19 +473,37 @@
         if (!section) return;
 
         const grid = section.querySelector(".dt-extra-grid");
-        const history = read(KEYS.history, []);
+        const history = getHistory();
 
         grid.innerHTML = "";
 
         if (!history.length) {
-            grid.innerHTML = '<div class="dt-empty">الأعمال التي تفتحها ستظهر هنا حتى ترجع إليها بسهولة.</div>';
+            grid.innerHTML = `
+                <div class="dt-empty">
+                    الأعمال التي تفتحها ستظهر هنا حتى ترجع إليها بسهولة.
+                </div>
+            `;
             return;
         }
 
+        // عرض آخر 6 أعمال مع الاحتفاظ ببوستراتها
         history.slice(0, 6).forEach(item => {
             grid.appendChild(makeExtraCard(item, false));
         });
     }
+
+    function recordVisit(item) {
+        saveHistoryItem(item);
+
+        const popular = read(KEYS.popular, {});
+        popular[item.key] = Number(popular[item.key] || 0) + 1;
+
+        write(KEYS.popular, popular);
+    }
+
+    /* =========================================
+       POPULAR
+    ========================================= */
 
     function renderPopular() {
         const section = document.getElementById("dt-popular");
@@ -457,8 +511,12 @@
 
         const grid = section.querySelector(".dt-extra-grid");
         const popular = read(KEYS.popular, {});
+
         const cards = getCards()
-            .map(item => ({ ...item, visits: Number(popular[item.key] || 0) }))
+            .map(item => ({
+                ...item,
+                visits: Number(popular[item.key] || 0)
+            }))
             .filter(item => item.visits > 0)
             .sort((a, b) => b.visits - a.visits)
             .slice(0, 6);
@@ -466,30 +524,27 @@
         grid.innerHTML = "";
 
         if (!cards.length) {
-            grid.innerHTML = '<div class="dt-empty">الأعمال التي تزورها ستظهر هنا مرتبة حسب عدد الزيارات على هذا الجهاز.</div>';
+            grid.innerHTML = `
+                <div class="dt-empty">
+                    الأعمال التي تزورها ستظهر هنا مرتبة حسب عدد الزيارات على هذا الجهاز.
+                </div>
+            `;
             return;
         }
 
-        cards.forEach(item => grid.appendChild(makeExtraCard(item, false)));
+        cards.forEach(item => {
+            grid.appendChild(makeExtraCard(item, false));
+        });
     }
 
-    function recordVisit(item) {
-        const history = read(KEYS.history, []);
-        const next = [
-            item,
-            ...history.filter(entry => entry.key !== item.key)
-        ].slice(0, 30);
-
-        write(KEYS.history, next);
-
-        const popular = read(KEYS.popular, {});
-        popular[item.key] = Number(popular[item.key] || 0) + 1;
-        write(KEYS.popular, popular);
-    }
+    /* =========================================
+       HOME PAGE
+    ========================================= */
 
     function setupHome() {
         const welcome = document.querySelector(".welcome-section");
         const movies = document.getElementById("movies");
+
         if (!welcome || !movies) return;
 
         const favorites = makeSection(
@@ -525,7 +580,13 @@
 
         ["moviesGrid", "seriesGrid"].forEach(id => {
             const grid = document.getElementById(id);
-            if (grid) observer.observe(grid, { childList: true, subtree: true });
+
+            if (grid) {
+                observer.observe(grid, {
+                    childList: true,
+                    subtree: true
+                });
+            }
         });
 
         addFavoriteButtons();
@@ -538,6 +599,7 @@
 
             const title = card.querySelector("h3")?.textContent?.trim();
             const type = card.dataset.type;
+
             if (!title || !type) return;
 
             const item = getCards().find(entry =>
@@ -552,6 +614,10 @@
         }, true);
     }
 
+    /* =========================================
+       DETAILS PAGE - SAVE REAL POSTER
+    ========================================= */
+
     function setupDetails() {
         const params = new URLSearchParams(location.search);
         const title = params.get("title");
@@ -559,48 +625,95 @@
 
         if (!title || !["movie", "series"].includes(type)) return;
 
-        const item = {
-            type,
-            title,
-            key: itemKey(type, title),
-            url: location.href,
-            image: "",
-            subtitle: type === "series" ? "مسلسل" : "فيلم"
-        };
+        const key = itemKey(type, title);
 
-        const history = read(KEYS.history, []);
-        write(KEYS.history, [
-            item,
-            ...history.filter(entry => entry.key !== item.key)
-        ].slice(0, 30));
+        function getPosterFromPage() {
+            const poster =
+                document.getElementById("workPoster") ||
+                document.querySelector("#page .poster") ||
+                document.querySelector("#page img");
+
+            if (!poster) return "";
+
+            const src = poster.getAttribute("src") || poster.src || "";
+
+            if (!src || src.startsWith("data:image/svg")) return "";
+
+            return src;
+        }
+
+        function updateHistoryWithPoster() {
+            const image = getPosterFromPage();
+
+            const oldItem = getHistory().find(entry => entry.key === key);
+
+            const item = {
+                type,
+                title,
+                key,
+                url: location.href,
+                image: image || oldItem?.image || "",
+                subtitle: type === "series" ? "مسلسل" : "فيلم"
+            };
+
+            saveHistoryItem(item);
+            renderHistory();
+        }
+
+        // نسجل العمل فور فتح صفحة التفاصيل
+        updateHistoryWithPoster();
 
         const page = document.getElementById("page");
-        if (!page) return;
+
+        if (page) {
+            const posterObserver = new MutationObserver(() => {
+                updateHistoryWithPoster();
+            });
+
+            posterObserver.observe(page, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ["src"]
+            });
+        }
+
+        /* Ratings */
 
         const addRating = () => {
-            if (page.querySelector(".dt-rating")) return;
+            if (!page || page.querySelector(".dt-rating")) return;
 
             const info = page.querySelector(".info");
             if (!info) return;
 
             const ratings = read(KEYS.ratings, {});
-            const current = Number(ratings[item.key] || 0);
+            const current = Number(ratings[key] || 0);
 
             const box = document.createElement("div");
             box.className = "dt-rating";
+
             box.innerHTML = `
                 <h3>⭐ قيّم هذا العمل</h3>
-                <div class="dt-rating-stars" role="group" aria-label="التقييم من نجمة إلى خمس نجوم">
-                    ${[1,2,3,4,5].map(number => `
+
+                <div class="dt-rating-stars"
+                     role="group"
+                     aria-label="التقييم من نجمة إلى خمس نجوم">
+
+                    ${[1, 2, 3, 4, 5].map(number => `
                         <button type="button"
                                 data-rating="${number}"
                                 class="${number <= current ? "active" : ""}"
                                 aria-label="${number} من 5">★</button>
                     `).join("")}
+
                 </div>
+
                 <div class="dt-rating-note">
-                    ${current ? "تقييمك الحالي: " + current + " من 5" : "اختر عدد النجوم لتسجيل تقييمك"}
-                    <br>التقييم محفوظ على هذا الجهاز فقط.
+                    ${current
+                        ? "تقييمك الحالي: " + current + " من 5"
+                        : "اختر عدد النجوم لتسجيل تقييمك"}
+                    <br>
+                    التقييم محفوظ على هذا الجهاز فقط.
                 </div>
             `;
 
@@ -609,7 +722,8 @@
                 if (!button) return;
 
                 const value = Number(button.dataset.rating);
-                ratings[item.key] = value;
+
+                ratings[key] = value;
                 write(KEYS.ratings, ratings);
 
                 box.querySelectorAll("[data-rating]").forEach(star => {
@@ -620,16 +734,28 @@
                 });
 
                 box.querySelector(".dt-rating-note").textContent =
-                    "تقييمك الحالي: " + value + " من 5 — محفوظ على هذا الجهاز.";
+                    "تقييمك الحالي: " + value +
+                    " من 5 — محفوظ على هذا الجهاز.";
             });
 
             info.appendChild(box);
         };
 
-        const observer = new MutationObserver(addRating);
-        observer.observe(page, { childList: true, subtree: true });
-        addRating();
+        if (page) {
+            const ratingObserver = new MutationObserver(addRating);
+
+            ratingObserver.observe(page, {
+                childList: true,
+                subtree: true
+            });
+
+            addRating();
+        }
     }
+
+    /* =========================================
+       START
+    ========================================= */
 
     function init() {
         injectStyles();
@@ -646,4 +772,5 @@
     } else {
         init();
     }
+
 })();
