@@ -1,0 +1,213 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#080808">
+    <meta name="description" content="DramaTV - اكتشف أحدث الأفلام والمسلسلات العربية والأجنبية والآسيوية">
+    <title>DramaTV | عالمك السينمائي</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="header-content">
+
+            <a href="#" class="logo">
+                <span class="logo-icon">D</span>
+                <span class="logo-text">Drama<span>TV</span></span>
+            </a>
+
+            <nav class="nav">
+                <a href="#home" class="active">الرئيسية</a>
+                <a href="#movies">الأفلام</a>
+                <a href="#series">المسلسلات</a>
+            </nav>
+
+            <div class="header-actions">
+                <button class="search-button" id="searchToggle" aria-label="بحث">
+                    <span>⌕</span>
+                </button>
+            </div>
+
+        </div>
+
+        <div class="search-container" id="searchContainer">
+            <input
+                type="search"
+                id="searchInput"
+                placeholder="ابحث عن فيلم أو مسلسل..."
+                autocomplete="off"
+            >
+        </div>
+    </header>
+
+
+    <main>
+
+        <section class="hero" id="home">
+            <div class="hero-overlay"></div>
+
+            <div class="hero-content">
+                <span class="hero-label">عالمك السينمائي</span>
+
+                <h1>
+                    كل القصص التي تحبها
+                    <span>في مكان واحد</span>
+                </h1>
+
+                <p>
+                    اكتشف عالماً من الأفلام والمسلسلات العربية
+                    والأجنبية والآسيوية.
+                </p>
+
+                <a href="#movies" class="hero-button">
+                    اكتشف المحتوى
+                    <span>←</span>
+                </a>
+            </div>
+
+            <div class="hero-bottom">
+                <span class="hero-dot"></span>
+                <span>DRAMATV ORIGINAL EXPERIENCE</span>
+            </div>
+        </section>
+
+
+        <section class="welcome-section">
+            <div>
+                <span class="section-eyebrow">مرحباً بك في</span>
+                <h2>Drama<span>TV</span></h2>
+                <p>وجهتك لاكتشاف عالم الأفلام والمسلسلات.</p>
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <strong id="movieCount">0</strong>
+                    <span>فيلم</span>
+                </div>
+
+                <div class="stat-item">
+                    <strong id="seriesCount">0</strong>
+                    <span>مسلسل</span>
+                </div>
+            </div>
+        </section>
+
+
+        <section class="content-section" id="movies">
+
+            <div class="section-heading">
+                <div>
+                    <span class="section-eyebrow">اكتشف عالم السينما</span>
+                    <h2>الأفلام</h2>
+                </div>
+
+                <span class="section-count" id="moviesHeadingCount">الأفلام</span>
+            </div>
+
+            <div class="filters" id="movieFilters">
+                <button class="filter-button active" data-category="الكل">الكل</button>
+                <button class="filter-button" data-category="عربي">عربي</button>
+                <button class="filter-button" data-category="أجنبي">أجنبي</button>
+                <button class="filter-button" data-category="آسيوي">آسيوي</button>
+                <button class="filter-button" data-category="هندي">هندي</button>
+                <button class="filter-button" data-category="تركي">تركي</button>
+                <button class="filter-button" data-category="أنيميشن">أنيميشن</button>
+            </div>
+
+            <div class="content-grid" id="moviesGrid">
+                <div class="loading">جاري تحميل الأفلام...</div>
+            </div>
+
+            <button class="load-more" id="moviesMore" hidden>
+                عرض المزيد
+            </button>
+
+        </section>
+
+
+        <section class="content-section series-section" id="series">
+
+            <div class="section-heading">
+                <div>
+                    <span class="section-eyebrow">حكايات لا تنتهي</span>
+                    <h2>المسلسلات</h2>
+                </div>
+
+                <span class="section-count" id="seriesHeadingCount">المسلسلات</span>
+            </div>
+
+            <div class="content-grid" id="seriesGrid">
+                <div class="loading">جاري تحميل المسلسلات...</div>
+            </div>
+
+            <button class="load-more" id="seriesMore" hidden>
+                عرض المزيد
+            </button>
+
+        </section>
+
+
+        <section class="about-section">
+            <div class="about-logo">D</div>
+
+            <div>
+                <span class="section-eyebrow">قصتك تبدأ هنا</span>
+                <h2>هذا هو <span>DramaTV</span></h2>
+                <p>
+                    تجربة سينمائية تجمع لك معلومات الأفلام والمسلسلات
+                    في تصميم واحد بسيط وأنيق.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+
+    <footer class="footer">
+        <a href="#" class="logo footer-logo">
+            <span class="logo-icon">D</span>
+            <span class="logo-text">Drama<span>TV</span></span>
+        </a>
+
+        <p>© <span id="currentYear"></span> DramaTV. جميع الحقوق محفوظة.</p>
+        <span class="footer-tagline">YOUR CINEMA WORLD</span>
+    </footer>
+
+
+    <div class="modal" id="detailsModal">
+        <div class="modal-backdrop" id="modalBackdrop"></div>
+
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose" aria-label="إغلاق">×</button>
+
+            <img id="modalPoster" src="" alt="">
+
+            <div class="modal-info">
+                <span class="modal-category" id="modalCategory"></span>
+                <h2 id="modalTitle"></h2>
+                <p id="modalDescription">
+                    استكشف تفاصيل هذا العمل.
+                </p>
+                <span class="modal-note">
+                    معلومات العمل فقط — التوفر والتشغيل يعتمدان على حقوق العرض والترخيص.
+                </span>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="toast" id="toast"></div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
