@@ -1,8 +1,7 @@
-
 "use strict";
 
 /* =========================================
-   DRAMATV - GITHUB DATA CONNECTION
+   DRAMATV - WEBSITE ENGINE
 ========================================= */
 
 const CONFIG = {
@@ -27,8 +26,10 @@ const CONFIG = {
         { file: "section_turkish.json", category: "تركي" }
     ],
 
-    cacheDuration: 5 * 60 * 1000,
-    itemsPerPage: 18
+    itemsPerPage: 18,
+    cacheMaxAge: 7 * 24 * 60 * 60 * 1000,
+    heroInterval: 6000,
+    maxHeroItems: 6
 };
 
 
@@ -44,12 +45,18 @@ const state = {
     filteredSeries: [],
 
     movieCategory: "الكل",
+    seriesCategory: "الكل",
+
     searchQuery: "",
 
     moviePage: 1,
     seriesPage: 1,
 
-    loading: false
+    heroItems: [],
+    heroIndex: 0,
+    heroTimer: null,
+
+    initialized: false
 };
 
 
@@ -62,6 +69,7 @@ const elements = {
     seriesGrid: document.getElementById("seriesGrid"),
 
     movieFilters: document.getElementById("movieFilters"),
+    seriesFilters: document.getElementById("seriesFilters"),
 
     movieCount: document.getElementById("movieCount"),
     seriesCount: document.getElementById("seriesCount"),
@@ -75,6 +83,15 @@ const elements = {
     searchToggle: document.getElementById("searchToggle"),
     searchContainer: document.getElementById("searchContainer"),
     searchInput: document.getElementById("searchInput"),
+
+    hero: document.querySelector(".hero"),
+    heroArt: document.getElementById("heroArt"),
+    heroLabel: document.getElementById("heroLabel"),
+    heroTitle: document.getElementById("heroTitle"),
+    heroDescription: document.getElementById("heroDescription"),
+    heroDots: document.getElementById("heroDots"),
+    heroPrevious: document.getElementById("heroPrevious"),
+    heroNext: document.getElementById("heroNext"),
 
     modal: document.getElementById("detailsModal"),
     modalBackdrop: document.getElementById("modalBackdrop"),
@@ -96,15 +113,15 @@ const elements = {
 function normalizeText(value) {
     return String(value || "")
         .trim()
-        .toLowerCase();
+        .toLowerCase()
+        .replace(/[ـًٌٍَُِّْ]/g, "")
+        .replace(/\s+/g, " ");
 }
 
 
 function normalizeSeriesTitle(value) {
     return normalizeText(value)
         .replace(/^مسلسل\s*/i, "")
-        .replace(/[ـًٌٍَُِّْ]/g, "")
-        .replace(/\s+/g, " ")
         .trim();
 }
 
@@ -163,7 +180,7 @@ function getPlaceholder() {
         encodeURIComponent(
             '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450">' +
             '<rect width="100%" height="100%" fill="#181818"/>' +
-            '<text x="50%" y="50%" fill="#555" font-size="25" ' +
+            '<text x="50%" y="50%" fill="#777" font-size="25" ' +
             'font-family="Arial" text-anchor="middle" dominant-baseline="middle">' +
             'DramaTV</text></svg>'
         );
@@ -175,19 +192,25 @@ function getCacheKey(file) {
 }
 
 
+function safeDescription(item) {
+    return String(
+        item.description ||
+        item.overview ||
+        "اكتشف تفاصيل هذا العمل على DramaTV."
+    );
+}
+
+
 /* =========================================
-   GITHUB FETCH
+   GITHUB DATA FETCH
 ========================================= */
 
 async function fetchJSON(file) {
-
     const cacheKey = getCacheKey(file);
 
     try {
-
         const response = await fetch(
-            CONFIG.baseUrl + encodeURIComponent(file) +
-            "?v=" + Date.now(),
+            CONFIG.baseUrl + encodeURIComponent(file) + "?v=" + Date.now(),
             {
                 method: "GET",
                 cache: "no-store"
@@ -195,9 +218,7 @@ async function fetchJSON(file) {
         );
 
         if (!response.ok) {
-            throw new Error(
-                "GitHub HTTP " + response.status + ": " + file
-            );
+            throw new Error("HTTP " + response.status + ": " + file);
         }
 
         const data = await response.json();
@@ -217,28 +238,25 @@ async function fetchJSON(file) {
         return data;
 
     } catch (error) {
-
-        console.warn("GitHub fetch failed:", file, error);
+        console.warn("DramaTV fetch failed:", file, error);
 
         try {
-
             const cached = localStorage.getItem(cacheKey);
 
             if (cached) {
-
                 const parsed = JSON.parse(cached);
 
                 if (
                     parsed &&
                     parsed.data &&
-                    Date.now() - parsed.time < 7 * 24 * 60 * 60 * 1000
+                    Date.now() - parsed.time < CONFIG.cacheMaxAge
                 ) {
+                    console.info("Using cached data:", file);
                     return parsed.data;
                 }
             }
-
         } catch {
-            // تجاهل بيانات التخزين غير الصالحة
+            // تجاهل الكاش غير الصالح
         }
 
         throw error;
@@ -251,31 +269,25 @@ async function fetchJSON(file) {
 ========================================= */
 
 function convertMovies(data, category) {
-
-    if (!data || typeof data !== "object") {
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
         return [];
     }
 
     const result = [];
 
     Object.entries(data).forEach(([title, item]) => {
-
         if (!item || typeof item !== "object") {
             return;
         }
 
         result.push({
             id: "movie_" + category + "_" + title,
-
             title: title,
-
             category: category,
-
             poster: getPoster(item),
-
-            description: item.description || item.overview || "",
-
-            mainLink: item.main_link || ""
+            description: safeDescription(item),
+            mainLink: item.main_link || "",
+            directVideo: item.direct_video || ""
         });
     });
 
@@ -284,15 +296,13 @@ function convertMovies(data, category) {
 
 
 function convertSeries(data, category) {
-
-    if (!data || typeof data !== "object") {
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
         return [];
     }
 
     const result = [];
 
     Object.entries(data).forEach(([title, item]) => {
-
         if (!item || typeof item !== "object") {
             return;
         }
@@ -303,17 +313,11 @@ function convertSeries(data, category) {
 
         result.push({
             id: "series_" + category + "_" + title,
-
             title: title,
-
             category: category,
-
             poster: getPoster(item),
-
-            description: item.description || item.overview || "",
-
+            description: safeDescription(item),
             episodeCount: episodes.length,
-
             mainLink: item.main_link || ""
         });
     });
@@ -327,27 +331,29 @@ function convertSeries(data, category) {
 ========================================= */
 
 async function loadMovies() {
+    if (!elements.moviesGrid) {
+        return;
+    }
 
     elements.moviesGrid.innerHTML =
         '<div class="loading">جاري تحميل الأفلام...</div>';
 
+    const categoryNames = {
+        arabic: "عربي",
+        foreign: "أجنبي",
+        asian: "آسيوي",
+        indian: "هندي",
+        turkish: "تركي",
+        animation: "أنيميشن"
+    };
+
     const results = await Promise.allSettled(
         CONFIG.movieFiles.map(async function (file) {
-
             const data = await fetchJSON(file);
 
             const category = file
                 .replace("movies_", "")
                 .replace(".json", "");
-
-            const categoryNames = {
-                arabic: "عربي",
-                foreign: "أجنبي",
-                asian: "آسيوي",
-                indian: "هندي",
-                turkish: "تركي",
-                animation: "أنيميشن"
-            };
 
             return convertMovies(
                 data,
@@ -359,18 +365,16 @@ async function loadMovies() {
     const movies = [];
 
     results.forEach(function (result) {
-
         if (result.status === "fulfilled") {
             movies.push(...result.value);
         } else {
-            console.warn("تعذر تحميل أحد أقسام الأفلام");
+            console.warn("تعذر تحميل ملف أفلام:", result.reason);
         }
     });
 
     const unique = new Map();
 
     movies.forEach(function (movie) {
-
         const key = normalizeText(movie.title);
 
         if (!unique.has(key)) {
@@ -380,67 +384,59 @@ async function loadMovies() {
 
     state.movies = Array.from(unique.values());
 
-    if (state.movies.length === 0) {
+    if (elements.movieCount) {
+        elements.movieCount.textContent = state.movies.length;
+    }
 
-        elements.moviesGrid.innerHTML =
-            '<div class="error-state">تعذر تحميل الأفلام حالياً. تحقق من اتصال الإنترنت أو ملفات البيانات.</div>';
-
-        return;
+    if (elements.moviesHeadingCount) {
+        elements.moviesHeadingCount.textContent =
+            state.movies.length + " فيلم";
     }
 
     state.filteredMovies = [...state.movies];
 
-    elements.movieCount.textContent = state.movies.length;
-
-    elements.moviesHeadingCount.textContent =
-        state.movies.length + " فيلم";
+    if (state.movies.length === 0) {
+        elements.moviesGrid.innerHTML =
+            '<div class="error-state">تعذر تحميل الأفلام حالياً. حاول مرة ثانية.</div>';
+        return;
+    }
 
     renderMovies();
 }
 
 
 /* =========================================
-   LOAD ALL SERIES SECTIONS
+   LOAD SERIES
 ========================================= */
 
 async function loadSeries() {
+    if (!elements.seriesGrid) {
+        return;
+    }
 
     elements.seriesGrid.innerHTML =
-        '<div class="loading">جاري تحميل جميع المسلسلات...</div>';
+        '<div class="loading">جاري تحميل المسلسلات...</div>';
 
-    const requests = CONFIG.seriesFiles.map(async function (entry) {
-
-        const data = await fetchJSON(entry.file);
-
-        return convertSeries(data, entry.category);
-    });
-
-    const results = await Promise.allSettled(requests);
+    const results = await Promise.allSettled(
+        CONFIG.seriesFiles.map(async function (entry) {
+            const data = await fetchJSON(entry.file);
+            return convertSeries(data, entry.category);
+        })
+    );
 
     const allSeries = [];
 
     results.forEach(function (result) {
-
         if (result.status === "fulfilled") {
-
             allSeries.push(...result.value);
-
         } else {
-
-            console.warn(
-                "تعذر تحميل أحد أقسام المسلسلات:",
-                result.reason
-            );
+            console.warn("تعذر تحميل قسم مسلسلات:", result.reason);
         }
     });
-
-
-    /* إزالة التكرار */
 
     const unique = new Map();
 
     allSeries.forEach(function (series) {
-
         const key = normalizeSeriesTitle(series.title);
 
         if (!key) {
@@ -449,7 +445,6 @@ async function loadSeries() {
 
         const existing = unique.get(key);
 
-        // الاحتفاظ بالنسخة التي تحتوي معلومات حلقات أكثر.
         if (
             !existing ||
             series.episodeCount > existing.episodeCount
@@ -458,31 +453,21 @@ async function loadSeries() {
         }
     });
 
-
     state.series = Array.from(unique.values());
-
     state.filteredSeries = [...state.series];
-
-
-    /* تحديث الأعداد */
 
     if (elements.seriesCount) {
         elements.seriesCount.textContent = state.series.length;
     }
 
     if (elements.seriesHeadingCount) {
-
         elements.seriesHeadingCount.textContent =
             state.series.length + " مسلسل";
     }
 
-
-    /* حالة عدم وجود بيانات */
-
     if (state.series.length === 0) {
-
         elements.seriesGrid.innerHTML =
-            '<div class="error-state">تعذر تحميل المسلسلات حالياً. تحقق من ملفات الأقسام واتصال الإنترنت.</div>';
+            '<div class="error-state">تعذر تحميل المسلسلات حالياً. حاول مرة ثانية.</div>';
 
         if (elements.seriesMore) {
             elements.seriesMore.hidden = true;
@@ -490,12 +475,6 @@ async function loadSeries() {
 
         return;
     }
-
-
-    console.log(
-        "DramaTV series loaded:",
-        state.series.length
-    );
 
     renderSeries();
 }
@@ -506,15 +485,13 @@ async function loadSeries() {
 ========================================= */
 
 function createCard(item, type, index) {
-
     const poster = getPoster(item) || getPlaceholder();
 
     const title = escapeHTML(item.title);
-
     const category = escapeHTML(item.category);
 
     const subtitle = type === "series"
-        ? (item.episodeCount + " حلقة")
+        ? (Number(item.episodeCount || 0) + " حلقة")
         : category;
 
     return `
@@ -526,7 +503,6 @@ function createCard(item, type, index) {
             role="button"
             aria-label="${title}"
         >
-
             <div class="poster-wrapper">
 
                 <img
@@ -547,7 +523,6 @@ function createCard(item, type, index) {
                 <h3>${title}</h3>
                 <p>${escapeHTML(subtitle)}</p>
             </div>
-
         </article>
     `;
 }
@@ -558,6 +533,9 @@ function createCard(item, type, index) {
 ========================================= */
 
 function renderMovies(append = false) {
+    if (!elements.moviesGrid) {
+        return;
+    }
 
     const start = append
         ? (state.moviePage - 1) * CONFIG.itemsPerPage
@@ -572,7 +550,6 @@ function renderMovies(append = false) {
     }
 
     if (state.filteredMovies.length === 0) {
-
         elements.moviesGrid.innerHTML =
             '<div class="empty-state">ما لقينا أفلام تطابق بحثك.</div>';
 
@@ -584,17 +561,12 @@ function renderMovies(append = false) {
     }
 
     const html = visible.map(function (movie, index) {
-
-        const globalIndex = start + index;
-
-        return createCard(movie, "movie", globalIndex);
-
+        return createCard(movie, "movie", start + index);
     }).join("");
 
     elements.moviesGrid.insertAdjacentHTML("beforeend", html);
 
     if (elements.moviesMore) {
-
         elements.moviesMore.hidden =
             end >= state.filteredMovies.length;
     }
@@ -606,6 +578,9 @@ function renderMovies(append = false) {
 ========================================= */
 
 function renderSeries(append = false) {
+    if (!elements.seriesGrid) {
+        return;
+    }
 
     const start = append
         ? (state.seriesPage - 1) * CONFIG.itemsPerPage
@@ -620,7 +595,6 @@ function renderSeries(append = false) {
     }
 
     if (state.filteredSeries.length === 0) {
-
         elements.seriesGrid.innerHTML =
             '<div class="empty-state">ما لقينا مسلسلات تطابق بحثك.</div>';
 
@@ -632,17 +606,12 @@ function renderSeries(append = false) {
     }
 
     const html = visible.map(function (series, index) {
-
-        const globalIndex = start + index;
-
-        return createCard(series, "series", globalIndex);
-
+        return createCard(series, "series", start + index);
     }).join("");
 
     elements.seriesGrid.insertAdjacentHTML("beforeend", html);
 
     if (elements.seriesMore) {
-
         elements.seriesMore.hidden =
             end >= state.filteredSeries.length;
     }
@@ -654,11 +623,9 @@ function renderSeries(append = false) {
 ========================================= */
 
 function filterMovies() {
-
     const query = normalizeText(state.searchQuery);
 
     state.filteredMovies = state.movies.filter(function (movie) {
-
         const matchesCategory =
             state.movieCategory === "الكل" ||
             movie.category === state.movieCategory;
@@ -671,31 +638,212 @@ function filterMovies() {
     });
 
     state.moviePage = 1;
-
     renderMovies();
 }
 
 
 /* =========================================
-   SEARCH
+   FILTER SERIES
 ========================================= */
 
-function searchAll(value) {
-
-    state.searchQuery = value || "";
-
-    filterMovies();
-
+function filterSeries() {
     const query = normalizeText(state.searchQuery);
 
     state.filteredSeries = state.series.filter(function (series) {
+        const matchesCategory =
+            state.seriesCategory === "الكل" ||
+            series.category === state.seriesCategory;
 
-        return normalizeText(series.title).includes(query);
+        const matchesSearch =
+            !query ||
+            normalizeText(series.title).includes(query);
+
+        return matchesCategory && matchesSearch;
     });
 
     state.seriesPage = 1;
-
     renderSeries();
+}
+
+
+/* =========================================
+   SEARCH ALL
+========================================= */
+
+function searchAll(value) {
+    state.searchQuery = value || "";
+
+    filterMovies();
+    filterSeries();
+}
+
+
+/* =========================================
+   HERO SLIDER
+========================================= */
+
+function getHeroItems() {
+    const combined = [];
+
+    state.movies.forEach(function (movie) {
+        if (movie.poster) {
+            combined.push({
+                title: movie.title,
+                category: movie.category,
+                poster: movie.poster,
+                description: movie.description,
+                type: "movie"
+            });
+        }
+    });
+
+    state.series.forEach(function (series) {
+        if (series.poster) {
+            combined.push({
+                title: series.title,
+                category: series.category,
+                poster: series.poster,
+                description: series.description,
+                type: "series"
+            });
+        }
+    });
+
+    state.heroItems = combined.slice(0, CONFIG.maxHeroItems);
+
+    renderHero();
+}
+
+
+function renderHero() {
+    if (
+        !elements.hero ||
+        !elements.heroItems
+    ) {
+        // لا يوجد اعتماد على عناصر إضافية
+    }
+
+    if (
+        !elements.heroTitle ||
+        !elements.heroDescription ||
+        !elements.heroArt
+    ) {
+        return;
+    }
+
+    if (state.heroItems.length === 0) {
+        return;
+    }
+
+    const item = state.heroItems[state.heroIndex];
+
+    if (!item) {
+        return;
+    }
+
+    const safePoster = safeImage(item.poster);
+
+    elements.heroTitle.innerHTML =
+        escapeHTML(item.title) +
+        '<span>على DramaTV</span>';
+
+    elements.heroDescription.textContent =
+        item.description ||
+        "اكتشف تفاصيل هذا العمل ضمن مكتبة DramaTV.";
+
+    if (elements.heroLabel) {
+        elements.heroLabel.textContent =
+            (item.type === "series" ? "مسلسل" : "فيلم") +
+            " • " + item.category;
+    }
+
+    elements.heroArt.style.backgroundImage =
+        safePoster
+            ? "linear-gradient(90deg, #080808 0%, rgba(8,8,8,.55) 55%, rgba(8,8,8,.1) 100%), url('" +
+              safePoster.replace(/'/g, "%27") + "')"
+            : "none";
+
+    if (elements.heroDots) {
+        elements.heroDots.innerHTML = state.heroItems.map(function (_, index) {
+            return `
+                <button
+                    class="hero-dot-button ${index === state.heroIndex ? "active" : ""}"
+                    data-hero-index="${index}"
+                    aria-label="انتقل إلى الشريحة ${index + 1}"
+                ></button>
+            `;
+        }).join("");
+    }
+}
+
+
+function changeHero(direction) {
+    if (state.heroItems.length < 2) {
+        return;
+    }
+
+    state.heroIndex =
+        (state.heroIndex + direction + state.heroItems.length) %
+        state.heroItems.length;
+
+    renderHero();
+    restartHeroTimer();
+}
+
+
+function restartHeroTimer() {
+    if (state.heroTimer) {
+        clearInterval(state.heroTimer);
+        state.heroTimer = null;
+    }
+
+    if (state.heroItems.length < 2) {
+        return;
+    }
+
+    state.heroTimer = setInterval(function () {
+        state.heroIndex =
+            (state.heroIndex + 1) % state.heroItems.length;
+
+        renderHero();
+    }, CONFIG.heroInterval);
+}
+
+
+function setupHero() {
+    if (elements.heroPrevious) {
+        elements.heroPrevious.addEventListener("click", function () {
+            changeHero(-1);
+        });
+    }
+
+    if (elements.heroNext) {
+        elements.heroNext.addEventListener("click", function () {
+            changeHero(1);
+        });
+    }
+
+    if (elements.heroDots) {
+        elements.heroDots.addEventListener("click", function (event) {
+            const button = event.target.closest("[data-hero-index]");
+
+            if (!button) {
+                return;
+            }
+
+            const index = Number(button.dataset.heroIndex);
+
+            if (
+                Number.isInteger(index) &&
+                index >= 0 &&
+                index < state.heroItems.length
+            ) {
+                state.heroIndex = index;
+                renderHero();
+                restartHeroTimer();
+            }
+        });
+    }
 }
 
 
@@ -704,7 +852,6 @@ function searchAll(value) {
 ========================================= */
 
 function openDetails(item, type) {
-
     if (!item || !item.title) {
         return;
     }
@@ -718,193 +865,211 @@ function openDetails(item, type) {
 }
 
 
-function closeDetails() {
+/* =========================================
+   CARD EVENTS
+========================================= */
 
-    if (!elements.modal) {
+function handleCardClick(event, type) {
+    const card = event.target.closest(".content-card");
+
+    if (!card || card.dataset.type !== type) {
         return;
     }
 
-    elements.modal.classList.remove("show");
+    const index = Number(card.dataset.index);
 
-    document.body.style.overflow = "";
+    if (!Number.isInteger(index)) {
+        return;
+    }
+
+    if (type === "movie") {
+        openDetails(state.filteredMovies[index], "movie");
+    } else {
+        openDetails(state.filteredSeries[index], "series");
+    }
+}
+
+
+function handleCardKeyboard(event) {
+    if (event.key !== "Enter" && event.key !== " ") {
+        return;
+    }
+
+    const card = event.target.closest(".content-card");
+
+    if (!card) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const index = Number(card.dataset.index);
+
+    if (!Number.isInteger(index)) {
+        return;
+    }
+
+    if (card.dataset.type === "movie") {
+        openDetails(state.filteredMovies[index], "movie");
+    } else {
+        openDetails(state.filteredSeries[index], "series");
+    }
 }
 
 
 /* =========================================
-   EVENT LISTENERS
+   FILTER BUTTONS
+========================================= */
+
+function setupMovieFilters() {
+    if (!elements.movieFilters) {
+        return;
+    }
+
+    elements.movieFilters.addEventListener("click", function (event) {
+        const button = event.target.closest(".filter-button");
+
+        if (!button) {
+            return;
+        }
+
+        elements.movieFilters
+            .querySelectorAll(".filter-button")
+            .forEach(function (item) {
+                item.classList.remove("active");
+            });
+
+        button.classList.add("active");
+
+        state.movieCategory =
+            button.dataset.category || "الكل";
+
+        filterMovies();
+    });
+}
+
+
+function setupSeriesFilters() {
+    if (!elements.seriesFilters) {
+        return;
+    }
+
+    elements.seriesFilters.addEventListener("click", function (event) {
+        const button = event.target.closest(".filter-button");
+
+        if (!button) {
+            return;
+        }
+
+        elements.seriesFilters
+            .querySelectorAll(".filter-button")
+            .forEach(function (item) {
+                item.classList.remove("active");
+            });
+
+        button.classList.add("active");
+
+        state.seriesCategory =
+            button.dataset.category || "الكل";
+
+        filterSeries();
+    });
+}
+
+
+/* =========================================
+   EVENTS
 ========================================= */
 
 function setupEvents() {
-
-    if (elements.searchToggle && elements.searchContainer && elements.searchInput) {
-
+    if (
+        elements.searchToggle &&
+        elements.searchContainer &&
+        elements.searchInput
+    ) {
         elements.searchToggle.addEventListener("click", function () {
-
             elements.searchContainer.classList.toggle("show");
 
             if (elements.searchContainer.classList.contains("show")) {
-
                 elements.searchInput.focus();
-
             } else {
-
                 elements.searchInput.value = "";
-
                 searchAll("");
             }
         });
     }
 
-
     if (elements.searchInput) {
-
         elements.searchInput.addEventListener("input", function (event) {
-
             searchAll(event.target.value);
         });
     }
 
-
-    if (elements.movieFilters) {
-
-        elements.movieFilters.addEventListener("click", function (event) {
-
-            const button = event.target.closest(".filter-button");
-
-            if (!button) {
-                return;
-            }
-
-            document.querySelectorAll(".filter-button").forEach(function (item) {
-
-                item.classList.remove("active");
-            });
-
-            button.classList.add("active");
-
-            state.movieCategory = button.dataset.category || "الكل";
-
-            filterMovies();
-        });
-    }
-
+    setupMovieFilters();
+    setupSeriesFilters();
+    setupHero();
 
     if (elements.moviesMore) {
-
         elements.moviesMore.addEventListener("click", function () {
-
             state.moviePage++;
-
             renderMovies(true);
         });
     }
 
-
     if (elements.seriesMore) {
-
         elements.seriesMore.addEventListener("click", function () {
-
             state.seriesPage++;
-
             renderSeries(true);
         });
     }
 
-
     if (elements.moviesGrid) {
-
         elements.moviesGrid.addEventListener("click", function (event) {
-
-            const card = event.target.closest(".content-card");
-
-            if (!card) {
-                return;
-            }
-
-            const index = Number(card.dataset.index);
-
-            openDetails(state.filteredMovies[index], "movie");
+            handleCardClick(event, "movie");
         });
+
+        elements.moviesGrid.addEventListener("keydown", handleCardKeyboard);
     }
 
-
     if (elements.seriesGrid) {
-
         elements.seriesGrid.addEventListener("click", function (event) {
-
-            const card = event.target.closest(".content-card");
-
-            if (!card) {
-                return;
-            }
-
-            const index = Number(card.dataset.index);
-
-            openDetails(state.filteredSeries[index], "series");
+            handleCardClick(event, "series");
         });
+
+        elements.seriesGrid.addEventListener("keydown", handleCardKeyboard);
     }
-
-
-    function handleKeyboard(event) {
-
-        if (event.key !== "Enter" && event.key !== " ") {
-            return;
-        }
-
-        const card = event.target.closest(".content-card");
-
-        if (!card) {
-            return;
-        }
-
-        event.preventDefault();
-
-        const index = Number(card.dataset.index);
-
-        if (card.dataset.type === "movie") {
-
-            openDetails(state.filteredMovies[index], "movie");
-
-        } else {
-
-            openDetails(state.filteredSeries[index], "series");
-        }
-    }
-
-
-    if (elements.moviesGrid) {
-        elements.moviesGrid.addEventListener("keydown", handleKeyboard);
-    }
-
-    if (elements.seriesGrid) {
-        elements.seriesGrid.addEventListener("keydown", handleKeyboard);
-    }
-
 
     if (elements.modalClose) {
-
         elements.modalClose.addEventListener("click", closeDetails);
     }
 
     if (elements.modalBackdrop) {
-
         elements.modalBackdrop.addEventListener("click", closeDetails);
     }
 
-
     document.addEventListener("keydown", function (event) {
-
         if (event.key === "Escape") {
             closeDetails();
         }
     });
 
-
     if (elements.currentYear) {
-
-        elements.currentYear.textContent =
-            new Date().getFullYear();
+        elements.currentYear.textContent = new Date().getFullYear();
     }
+}
+
+
+/* =========================================
+   CLOSE DETAILS MODAL
+========================================= */
+
+function closeDetails() {
+    if (!elements.modal) {
+        return;
+    }
+
+    elements.modal.classList.remove("show");
+    document.body.style.overflow = "";
 }
 
 
@@ -913,6 +1078,11 @@ function setupEvents() {
 ========================================= */
 
 async function initializeDramaTV() {
+    if (state.initialized) {
+        return;
+    }
+
+    state.initialized = true;
 
     setupEvents();
 
@@ -921,7 +1091,10 @@ async function initializeDramaTV() {
         loadSeries()
     ]);
 
-    console.log("DramaTV website initialized");
+    getHeroItems();
+    restartHeroTimer();
+
+    console.log("DramaTV initialized successfully");
 }
 
 
