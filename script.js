@@ -1126,11 +1126,48 @@ function renderHero() {
             " • " + item.category;
     }
 
+    // عرض صورة البانر كعنصر IMG مستقل حتى لا تتأثر بقيود background-image
+    elements.heroArt.replaceChildren();
+
     elements.heroArt.style.backgroundImage =
-        safePoster
-            ? "linear-gradient(90deg, #080808 0%, rgba(8,8,8,.55) 55%, rgba(8,8,8,.1) 100%), url('" +
-              safePoster.replace(/'/g, "%27") + "')"
-            : "none";
+        "linear-gradient(90deg, #080808 0%, rgba(8,8,8,.48) 52%, rgba(8,8,8,.08) 100%)";
+
+    elements.heroArt.style.backgroundColor = "#080808";
+    elements.heroArt.style.overflow = "hidden";
+
+    if (safePoster) {
+        const heroImage = document.createElement("img");
+
+        heroImage.className = "dramatv-hero-image";
+        heroImage.src = safePoster;
+        heroImage.alt = item.title;
+        heroImage.loading = "eager";
+        heroImage.decoding = "async";
+        heroImage.fetchPriority = "high";
+        heroImage.draggable = false;
+
+        heroImage.style.cssText =
+            "position:absolute;inset:0;width:100%;height:100%;" +
+            "display:block;object-fit:cover;object-position:center 25%;" +
+            "opacity:1;z-index:0;pointer-events:none;";
+
+        heroImage.onerror = function () {
+            this.remove();
+        };
+
+        elements.heroArt.appendChild(heroImage);
+    }
+
+    // تدرج واضح فوق الصورة مع إبقاء النص مقروءاً
+    const heroOverlay = elements.hero.querySelector(".hero-overlay");
+
+    if (heroOverlay) {
+        heroOverlay.style.background =
+            "linear-gradient(90deg, #080808 0%, rgba(8,8,8,.90) 24%, " +
+            "rgba(8,8,8,.48) 55%, rgba(8,8,8,.10) 100%)";
+
+        heroOverlay.style.zIndex = "1";
+    }
 
     if (elements.heroDots) {
         elements.heroDots.innerHTML = state.heroItems.map(function (_, index) {
