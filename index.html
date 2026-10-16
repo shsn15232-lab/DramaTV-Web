@@ -12,6 +12,118 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="style.css">
+
+    <style>
+        .dt-app-section {
+            margin: 45px auto;
+            padding: 30px 20px;
+            max-width: 1150px;
+            background: linear-gradient(135deg, #171717, #090909);
+            border: 1px solid #292929;
+            border-radius: 22px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dt-app-section::before {
+            content: "";
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            background: #e50914;
+            filter: blur(120px);
+            opacity: .16;
+            top: -120px;
+            right: -80px;
+            pointer-events: none;
+        }
+
+        .dt-app-section h2 {
+            font-size: 27px;
+            font-weight: 900;
+            margin: 8px 0;
+        }
+
+        .dt-app-section h2 span {
+            color: #ed2635;
+        }
+
+        .dt-app-section p {
+            color: #aaa;
+            font-size: 14px;
+            margin: 8px 0 22px;
+        }
+
+        .dt-app-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .dt-app-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: 190px;
+            padding: 13px 20px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 14px;
+            transition: .25s ease;
+        }
+
+        .dt-app-button:hover {
+            transform: translateY(-4px);
+            filter: brightness(1.15);
+        }
+
+        .dt-download {
+            background: linear-gradient(135deg, #ed2535, #b90018);
+            color: white;
+            box-shadow: 0 5px 22px #e5091433;
+        }
+
+        .dt-telegram {
+            background: #168bd0;
+            color: white;
+        }
+
+        .dt-app-icon {
+            font-size: 22px;
+        }
+
+        .dt-app-note {
+            display: block;
+            color: #777;
+            font-size: 11px;
+            margin-top: 18px;
+        }
+
+        @media (max-width: 480px) {
+            .dt-app-section {
+                margin: 25px 14px;
+                padding: 25px 14px;
+            }
+
+            .dt-app-section h2 {
+                font-size: 23px;
+            }
+
+            .dt-app-buttons {
+                flex-direction: column;
+            }
+
+            .dt-app-button {
+                width: 100%;
+                box-sizing: border-box;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -47,7 +159,6 @@
         >
     </div>
 </header>
-
 
 <main>
 
@@ -98,7 +209,6 @@
 
     </section>
 
-
     <!-- WELCOME -->
 
     <section class="welcome-section">
@@ -125,6 +235,58 @@
 
     </section>
 
+    <!-- APP DOWNLOAD AND TELEGRAM -->
+
+    <section class="dt-app-section" id="download">
+
+        <span class="section-eyebrow">تجربة DramaTV على أجهزتك</span>
+
+        <h2>حمّل تطبيق <span>DramaTV</span></h2>
+
+        <p>
+            استمتع بتجربة DramaTV على هاتفك أو شاشة التلفاز،
+            وتابع آخر أخبار وتحديثات التطبيق عبر قناتنا.
+        </p>
+
+        <div class="dt-app-buttons">
+
+            <a
+                class="dt-app-button dt-download"
+                href="https://github.com/shsn15232-lab/DramaTV-Data/releases/download/v1.0.0/DramaTV.apk"
+                target="_blank"
+                rel="noopener"
+            >
+                <span class="dt-app-icon">📱</span>
+                <span>تحميل للهاتف</span>
+            </a>
+
+            <a
+                class="dt-app-button dt-download"
+                href="https://github.com/shsn15232-lab/DramaTV-Data/releases/download/v1.0.0/DramaTV.apk"
+                target="_blank"
+                rel="noopener"
+            >
+                <span class="dt-app-icon">📺</span>
+                <span>تحميل للتلفاز</span>
+            </a>
+
+            <a
+                class="dt-app-button dt-telegram"
+                href="https://t.me/Drama_vT"
+                target="_blank"
+                rel="noopener"
+            >
+                <span class="dt-app-icon">✈️</span>
+                <span>قناة التليجرام</span>
+            </a>
+
+        </div>
+
+        <span class="dt-app-note">
+            ملف تثبيت واحد يدعم الهاتف والتلفاز
+        </span>
+
+    </section>
 
     <!-- MOVIES -->
 
@@ -162,7 +324,6 @@
         </button>
 
     </section>
-
 
     <!-- SERIES -->
 
@@ -202,7 +363,6 @@
 
     </section>
 
-
     <!-- ABOUT -->
 
     <section class="about-section">
@@ -224,6 +384,7 @@
 
 </main>
 
+<!-- FOOTER -->
 
 <footer class="footer">
 
@@ -240,7 +401,6 @@
     <span class="footer-tagline">YOUR CINEMA WORLD</span>
 
 </footer>
-
 
 <!-- DETAILS MODAL -->
 
@@ -276,9 +436,7 @@
 
 </div>
 
-
 <div class="toast" id="toast"></div>
-
 
 <!-- MAIN WEBSITE SCRIPT -->
 <script src="script.js"></script>
