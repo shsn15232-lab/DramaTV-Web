@@ -206,6 +206,7 @@
                 color: #fff;
                 font-size: 13px;
                 font-weight: 900;
+                text-decoration: none;
             }
 
             .dt-drawer-telegram {
@@ -218,6 +219,7 @@
                 color: #fff;
                 font-size: 13px;
                 font-weight: 900;
+                text-decoration: none;
             }
 
             body.dt-drawer-open {
@@ -249,7 +251,7 @@
                 height: 100%;
                 object-fit: cover;
                 object-position: center 25%;
-                opacity: .94;
+                opacity: 1;
                 display: block;
                 transition: opacity .35s ease;
             }
@@ -260,9 +262,9 @@
                     linear-gradient(
                         0deg,
                         #080808 0%,
-                        rgba(8,8,8,.82) 12%,
-                        rgba(8,8,8,.25) 48%,
-                        rgba(8,8,8,.08) 100%
+                        rgba(8,8,8,.72) 12%,
+                        rgba(8,8,8,.16) 48%,
+                        rgba(8,8,8,.02) 100%
                     ) !important;
             }
 
@@ -340,6 +342,10 @@
 
         document.head.appendChild(style);
     }
+
+    /* =========================================
+       DRAWER MENU
+    ========================================= */
 
     function createDrawer() {
         if (document.getElementById("dt-drawer")) return;
@@ -454,6 +460,10 @@
         });
     }
 
+    /* =========================================
+       MOVE FEATURE SECTIONS TO MENU
+    ========================================= */
+
     function moveFeatureSections(drawer) {
         const target = drawer.querySelector("#dtDrawerSections");
         if (!target) return;
@@ -471,15 +481,27 @@
         });
     }
 
+    /* =========================================
+       HERO POSTER FIX
+    ========================================= */
+
     function setupHeroPoster() {
         const heroArt = document.getElementById("heroArt");
         if (!heroArt) return;
 
         function extractPoster(background) {
-            if (!background || background === "none") return "";
+            if (!background || background === "none") {
+                return "";
+            }
 
-            const match = background.match(/url\\((?:"|')?(.*?)(?:"|')?\\)/i);
-            if (!match || !match[1]) return "";
+            /* FIXED URL EXTRACTION */
+            const match = background.match(
+                /url\((?:"|')?(.*?)(?:"|')?\)/i
+            );
+
+            if (!match || !match[1]) {
+                return "";
+            }
 
             return match[1].replace(/%27/g, "'");
         }
@@ -498,10 +520,11 @@
                 image.alt = "بوستر العمل المميز";
                 image.loading = "eager";
                 image.decoding = "async";
+
                 heroArt.appendChild(image);
             }
 
-            if (image.src !== posterUrl) {
+            if (image.getAttribute("src") !== posterUrl) {
                 image.src = posterUrl;
             }
 
@@ -519,7 +542,12 @@
 
         setTimeout(updatePoster, 300);
         setTimeout(updatePoster, 1000);
+        setTimeout(updatePoster, 2000);
     }
+
+    /* =========================================
+       INITIALIZATION
+    ========================================= */
 
     function init() {
         addStyles();
