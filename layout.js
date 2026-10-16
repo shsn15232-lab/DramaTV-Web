@@ -2,7 +2,7 @@
 
 /* =========================================
    DRAMATV - PREMIUM LAYOUT
-   Hamburger menu + clearer hero poster
+   Hamburger menu + fixed hero poster
 ========================================= */
 
 (function () {
@@ -226,7 +226,7 @@
                 overflow: hidden;
             }
 
-            /* CLEARER HERO POSTER */
+            /* HERO POSTER */
             .hero {
                 min-height: 570px !important;
                 background: #080808 !important;
@@ -239,21 +239,10 @@
                 inset: 0 !important;
                 opacity: 1 !important;
                 transform: none !important;
-                background-image: none !important;
+                background-size: cover !important;
+                background-position: center 25% !important;
+                background-repeat: no-repeat !important;
                 overflow: hidden;
-            }
-
-            .dt-hero-poster {
-                position: absolute;
-                top: 0;
-                right: 0;
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-                object-position: center 25%;
-                opacity: 1;
-                display: block;
-                transition: opacity .35s ease;
             }
 
             .hero-overlay {
@@ -306,10 +295,6 @@
                     padding: 35px 6% 85px !important;
                 }
 
-                .dt-hero-poster {
-                    object-position: center 20%;
-                }
-
                 .hero-content {
                     padding-bottom: 5px;
                 }
@@ -328,10 +313,6 @@
             @media(min-width: 900px) {
                 .hero {
                     min-height: 620px !important;
-                }
-
-                .dt-hero-poster {
-                    object-position: center 22%;
                 }
 
                 .hero-content {
@@ -482,77 +463,12 @@
     }
 
     /* =========================================
-       HERO POSTER FIX
-    ========================================= */
-
-    function setupHeroPoster() {
-        const heroArt = document.getElementById("heroArt");
-        if (!heroArt) return;
-
-        function extractPoster(background) {
-            if (!background || background === "none") {
-                return "";
-            }
-
-            /* FIXED URL EXTRACTION */
-            const match = background.match(
-                /url\((?:"|')?(.*?)(?:"|')?\)/i
-            );
-
-            if (!match || !match[1]) {
-                return "";
-            }
-
-            return match[1].replace(/%27/g, "'");
-        }
-
-        function updatePoster() {
-            const background = heroArt.style.backgroundImage;
-            const posterUrl = extractPoster(background);
-
-            if (!posterUrl) return;
-
-            let image = heroArt.querySelector(".dt-hero-poster");
-
-            if (!image) {
-                image = document.createElement("img");
-                image.className = "dt-hero-poster";
-                image.alt = "بوستر العمل المميز";
-                image.loading = "eager";
-                image.decoding = "async";
-
-                heroArt.appendChild(image);
-            }
-
-            if (image.getAttribute("src") !== posterUrl) {
-                image.src = posterUrl;
-            }
-
-            heroArt.style.backgroundImage = "none";
-        }
-
-        updatePoster();
-
-        const observer = new MutationObserver(updatePoster);
-
-        observer.observe(heroArt, {
-            attributes: true,
-            attributeFilter: ["style"]
-        });
-
-        setTimeout(updatePoster, 300);
-        setTimeout(updatePoster, 1000);
-        setTimeout(updatePoster, 2000);
-    }
-
-    /* =========================================
        INITIALIZATION
     ========================================= */
 
     function init() {
         addStyles();
         createDrawer();
-        setupHeroPoster();
     }
 
     if (document.readyState === "loading") {
